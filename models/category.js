@@ -8,12 +8,15 @@ const Category = mongoose.model(
     name: {
       type: String,
       required: true,
-      minlength: 5,
+      minlength: 4,
       maxlength: 50
     },
     parentCategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category"
+    },
+    hasChild: {
+      type: Boolean
     }
   })
 );
@@ -23,7 +26,8 @@ function validateCategory(category) {
     name: Joi.string()
       .min(3)
       .required(),
-    parentCategory: Joi.ObjectId()
+    parentCategory: Joi.ObjectId(),
+    hasChild: Joi.boolean()
   };
 
   return Joi.validate(category, schema);

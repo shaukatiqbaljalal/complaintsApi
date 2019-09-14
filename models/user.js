@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const config = require("config");
 
-const assigneeSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
@@ -17,7 +17,7 @@ const assigneeSchema = new mongoose.Schema({
     required: true,
     minlength: 5,
     maxlength: 255,
-    unique: true
+    unique: false
   },
   phone: {
     type: String,
@@ -25,11 +25,15 @@ const assigneeSchema = new mongoose.Schema({
     minlength: 9,
     maxlength: 50
   },
-
-  responsibilities: {
-    type: [{}],
-    ref: "Category",
-    required: false
+  address: {
+    type: String,
+    required: true,
+    minlength: 5
+  },
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Company",
+    required: true
   },
   password: {
     type: String,
@@ -43,16 +47,35 @@ const assigneeSchema = new mongoose.Schema({
     minlength: 5,
     maxlength: 1024
   },
-  chatWith: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Complainer"
+  role: {
+    type: String,
+    required: true,
+    maxlength: 1024
+  },
+  companyOwnerName: {
+    type: String,
+    minlength: 5
+  },
+  nextToKinName: {
+    type: String,
+    minlength: 5
+  },
+  nextToKinCnic: {
+    type: String,
+    minlength: 13,
+    maxlength: 13
+  },
+  cnic: {
+    type: String,
+    minlength: 13,
+    maxlength: 13
   },
   profilePicture: {
     type: Buffer
   }
 });
 
-assigneeSchema.methods.generateAuthToken = function() {
+userSchema.methods.generateAuthToken = function() {
   // const profilePicture = this.profilePicture ? this.profilePicture : "";
 
   // console.log(this.profilePicture);
@@ -60,7 +83,8 @@ assigneeSchema.methods.generateAuthToken = function() {
     {
       _id: this._id,
       name: this.name,
-      role: "assignee"
+      role: this.role,
+      companyId: this.companyId
       // profilePicture: profilePicture
     },
     config.get("jwtPrivateKey")
@@ -68,13 +92,16 @@ assigneeSchema.methods.generateAuthToken = function() {
   return token;
 };
 
-const Assignee = mongoose.model("Assignee", assigneeSchema);
+const User = mongoose.model("User", userSchema);
 
-function validateAssignee(assignee) {
-  const schema = {
+function validateUser(user) {
+  let schema = {
     name: Joi.string()
       .min(5)
       .max(50)
+      .required(),
+    address: Joi.string()
+      .min(5)
       .required(),
     email: Joi.string()
       .min(5)
@@ -84,8 +111,7 @@ function validateAssignee(assignee) {
     phone: Joi.string()
       .min(9)
       .max(50),
-
-    responsibilities: Joi.array().items(Joi.object()),
+    companyId: Joi.ObjectId().required(),
     password: Joi.string()
       .min(8)
       .max(255)
@@ -93,12 +119,29 @@ function validateAssignee(assignee) {
     profilePath: Joi.string()
       .min(5)
       .max(255),
-    chatWith: Joi.ObjectId(),
+    role: Joi.string().required(),
     profilePicture: Joi.binary()
   };
 
-  return Joi.validate(assignee, schema);
+  if (user.role === "agent") {
+    schema.companyOwnerName = Joi.string().min(5);
+  }
+
+  if (user.role === "customer") {
+    schema.cnic = Joi.string()
+      .min(13)
+      .max(13)
+      .required();
+    schema.nextToKinCnic = Joi.string()
+      .min(13)
+      .max(13)
+      .required();
+    schema.nextToKinName = Joi.string()
+      .min(5)
+      .required();
+  }
+  return Joi.validate(user, schema);
 }
 
-exports.Assignee = Assignee;
-exports.validate = validateAssignee;
+exports.User = User;
+exports.validate = validateUser;

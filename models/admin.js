@@ -10,6 +10,7 @@ const adminSchema = new mongoose.Schema({
     minlength: 5,
     maxlength: 50
   },
+
   email: {
     type: String,
     required: true,
@@ -17,22 +18,40 @@ const adminSchema = new mongoose.Schema({
     maxlength: 255,
     unique: true
   },
+  phone: {
+    type: String,
+    required: false,
+    minlength: 9,
+    maxlength: 50
+  },
+
   password: {
     type: String,
     required: true,
+    minlength: 8,
+    maxlength: 1024
+  },
+  profilePath: {
+    type: String,
+    required: false,
     minlength: 5,
     maxlength: 1024
   },
+  profilePicture: { type: Buffer },
   responsibility: {
     type: [mongoose.Schema.Types.ObjectId],
-    ref: "Category",
-    required: true
+    ref: "Category"
   }
 });
 
 adminSchema.methods.generateAuthToken = function() {
+  // const profilePicture = this.profilePicture ? this.profilePicture : "";
   const token = jwt.sign(
-    { _id: this._id, name: this.name, role: "admin" },
+    {
+      _id: this._id,
+      name: this.name,
+      role: "admin"
+    },
     config.get("jwtPrivateKey")
   );
   return token;
@@ -51,13 +70,19 @@ function validateAdmin(Admin) {
       .max(255)
       .required()
       .email(),
+    phone: Joi.string()
+      .min(9)
+      .max(50),
+
     password: Joi.string()
-      .min(5)
+      .min(8)
       .max(255)
       .required(),
-    responsibility: Joi.array()
-      .items(Joi.ObjectId())
-      .required()
+    profilePath: Joi.string()
+      .min(5)
+      .max(255),
+    responsibility: Joi.array().items(Joi.ObjectId()),
+    profilePicture: Joi.binary()
   };
 
   return Joi.validate(Admin, schema);

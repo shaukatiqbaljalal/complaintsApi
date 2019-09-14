@@ -5,6 +5,7 @@ const express = require("express");
 const _ = require("lodash");
 const { Complainer } = require("../models/complainer");
 const router = express.Router();
+const decrypt = require("./../common/decrypt");
 
 router.post("/", async (req, res) => {
   const { error } = validate(req.body);
@@ -13,19 +14,15 @@ router.post("/", async (req, res) => {
   let complainer = await Complainer.findOne({ email: req.body.email });
 
   if (!complainer) return res.status(400).send("Invalid email or password.");
-
-  const validPassword = await bcrypt.compare(
-    req.body.password,
-    complainer.password
-  );
-  if (!validPassword) return res.status(400).send("Invalid email or password.");
+  if (req.body.password !== decrypt(complainer.password))
+    return res.status(400).send("Invalid email or password.");
 
   const token = complainer.generateAuthToken();
 
   res
     .header("x-auth-token", token)
     .header("access-control-expose-headers", "x-auth-token")
-    .send(token);
+    .send(complainer);
 });
 
 function validate(req) {
