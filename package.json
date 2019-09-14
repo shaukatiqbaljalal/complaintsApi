@@ -1,0 +1,33 @@
+{
+  "name": "quickresponse",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "compromise": "^11.14.2",
+    "config": "^3.0.1",
+    "cors": "^2.8.5",
+    "express": "^4.16.2",
+    "fawn": "^2.1.5",
+    "joi": "^13.1.0",
+    "joi-objectid": "^2.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.11",
+    "mime": "^2.4.4",
+    "mongoose": "^5.0.2",
+    "multer": "^1.4.1",
+    "nodemailer": "^6.3.0",
+    "nodemailer-sendgrid-transport": "^0.2.0",
+    "nodemon": "^1.19.1",
+    "pdfkit": "^0.10.0",
+    "sentiment": "^5.0.1",
+    "socket.io": "^2.2.0"
+  }
+}
