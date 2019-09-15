@@ -7,11 +7,12 @@ const router = express.Router();
 
 // getting assignee categories
 router.get("/assignee", authAssignee, async (req, res) => {
-  const assignee = await Assignee.findOne({ _id: req.assignee._id });
+  // const assignee = await Assignee.findOne({ _id: req.assignee._id });
+  // const categories = await Category.find({ _id: assignee.responsibilities._id });
 
-  const categories = await Category.find({ _id: assignee.responsibility });
+  const assignee = await Assignee.find({ _id: req.assignee._id });
 
-  res.status(200).send(categories);
+  res.status(200).send(assignee.responsibilities);
 });
 
 // getting assignee categories
