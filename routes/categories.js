@@ -9,9 +9,9 @@ const router = express.Router();
 router.get("/assignee", authAssignee, async (req, res) => {
   const assignee = await Assignee.findOne({ _id: req.assignee._id });
 
-  const categories = await Category.find({ _id: assignee.responsibility });
+  // const categories = await Category.find({ _id: assignee.responsibility });
 
-  res.status(200).send(categories);
+  res.status(200).send(assignee.responsibilities);
 });
 
 // getting assignee categories

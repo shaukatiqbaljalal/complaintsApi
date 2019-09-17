@@ -101,6 +101,7 @@ router.post(
 
     await complainer.save();
     res.send(_.pick(complainer, ["_id", "name", "email"]));
+    if (req.file) deleteFile(req.file.path);
     sendEmail(options);
   }
 );
@@ -166,12 +167,20 @@ router.post(
 router.put("/:id", upload.single("profilePicture"), async (req, res) => {
   // const { error } = validate(req.body);
   // if (error) return res.status(400).send(error.details[0].message);
-  let complainer = await Complainer.findOne({ email: req.body.email });
+  let complainer = await Complainer.findById(req.params.id);
+  if (!complainer)
+    return res
+      .status(404)
+      .send("The complainer with the given ID was not found.");
+  complainer = await Complainer.findOne({ email: req.body.email });
   if (complainer && complainer._id != req.params.id)
     return res.status(400).send("email already registered");
   const profilePath = req.file ? req.file.path : req.body.profilePath;
-  let profilePicture = null;
-  if (req.file) profilePicture = fs.readFileSync(req.file.path);
+  let profilePicture = complainer.profilePicture;
+  if (req.file) {
+    profilePicture = fs.readFileSync(req.file.path);
+  }
+  if (!profilePath) profilePicture = null;
   complainer = await Complainer.findByIdAndUpdate(
     req.params.id,
     {
@@ -183,13 +192,8 @@ router.put("/:id", upload.single("profilePicture"), async (req, res) => {
     },
     { new: true }
   );
-
-  if (!complainer)
-    return res
-      .status(404)
-      .send("The complainer with the given ID was not found.");
-
   res.send(complainer);
+  if (req.file) deleteFile(req.file.path);
 });
 
 router.delete("/:id", async (req, res) => {

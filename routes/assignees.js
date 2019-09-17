@@ -112,7 +112,6 @@ router.post(
 
     assignee.password = encrypt(assignee.password);
     await assignee.save();
-    if (req.file) deleteFile(req.file.path);
     const options = getEmailOptions(
       assignee.email,
       req.get("origin"),
@@ -121,6 +120,7 @@ router.post(
       "assignee"
     );
     res.send(_.pick(assignee, ["_id", "name", "email"]));
+    if (req.file) deleteFile(req.file.path);
     sendEmail(options);
   }
 );
@@ -136,9 +136,6 @@ router.post(
     }
     let errors = [];
     let users = req.users;
-
-    //delete file from server
-    deleteFile(req.file.path);
 
     //create accounts for each entry
     for (let index = 0; index < users.length; index++) {
@@ -193,12 +190,18 @@ router.post(
       sendEmail(options);
     }
     sendCsvToClient(req, res, errors);
+    if (req.file) deleteFile(req.file.path);
   }
 );
 
 router.put("/:id", upload.single("profilePicture"), async (req, res) => {
   // const { error } = validate(req.body);
   // if (error) return res.status(400).send(error.details[0].message);
+  let assignee = await Assignee.findById(req.params.id);
+  if (!assignee)
+    return res
+      .status(404)
+      .send("The assignee with the given ID was not found.");
   console.log("req file", req.file);
   console.log("req body", req.body);
   const profilePath = req.file ? req.file.path : req.body.profilePath;
@@ -207,22 +210,18 @@ router.put("/:id", upload.single("profilePicture"), async (req, res) => {
     email: req.body.email,
     phone: req.body.phone,
     responsibilities: JSON.parse(req.body.responsibilities),
-    profilePath: profilePath
+    profilePath: profilePath,
+    profilePicture: assignee.profilePicture
   };
-  if (req.file) updatedUser.profilePicture = fs.readFileSync(req.file.path);
+  if (req.file) {
+    updatedUser.profilePicture = fs.readFileSync(req.file.path);
+  }
 
-  const assignee = await Assignee.findByIdAndUpdate(
-    req.params.id,
-    updatedUser,
-    { new: true }
-  );
-
-  if (!assignee)
-    return res
-      .status(404)
-      .send("The assignee with the given ID was not found.");
-
+  assignee = await Assignee.findByIdAndUpdate(req.params.id, updatedUser, {
+    new: true
+  });
   res.send(assignee);
+  if (req.file) deleteFile(req.file.path);
 });
 
 router.put("/change/chatwith/messages/:assigneeId/:id", async (req, res) => {
