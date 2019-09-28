@@ -14,7 +14,7 @@ const encrypt = require("./../common/encrypt");
 const sendEmail = require("../common/sendEmail");
 const { getEmailOptions } = require("../common/sendEmail");
 // multer storageor
-const multerStorage = multer.diskStora ge({
+const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     let dest =
       file.mimetype === "application/vnd.ms-excel"
