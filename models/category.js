@@ -24,7 +24,7 @@ const Category = mongoose.model(
 function validateCategory(category) {
   const schema = {
     name: Joi.string()
-      .min(3)
+      .min(4)
       .required(),
     parentCategory: Joi.ObjectId(),
     hasChild: Joi.boolean()

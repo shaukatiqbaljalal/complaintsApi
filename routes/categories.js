@@ -28,33 +28,32 @@ router.get("/all", async (req, res) => {
   res.send(categories);
 });
 
-// creating categories
-router.post("/", async (req, res) => {
-  const { error } = validate(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
+async function childsOf(id) {
+  let childs = await Category.find({ parentCategory: id });
+  return childs;
+}
 
-  let category = await Category.findOne({ name: req.body.name });
-  if (category) return res.status(400).send("Category already found.");
+async function _findCategoryById(id) {
+  let category = await Category.findById(id);
+  return category;
+}
 
-  category = new Category({
-    name: req.body.name,
-    parentCategory: req.body.parentCategory,
-    hasChild: false
-  });
+async function _findAndUpdateById(id, body, option = false) {
+  return await Category.findByIdAndUpdate(id, body, { new: option });
+}
 
-  if (req.body.parentCategory) {
-    const category = await Category.findByIdAndUpdate(
-      req.body.parentCategory,
-      { hasChild: true },
-      { new: true }
-    );
-
-    if (!category) return res.status(400).send("Parent category not found");
-    console.log(category);
+async function toggleHasChild(id) {
+  let category = await _findCategoryById(id);
+  if (category) {
+    console.log("Parent category Got", category);
+    category.hasChild = !category.hasChild;
+    try {
+      return await category.save();
+    } catch (error) {
+      console.log("error in toggle has child", error);
+    }
   }
-  await category.save();
-  res.send(category);
-});
+}
 
 // getting category which has specific parent
 router.get("/specific/parent/:id", async (req, res) => {
@@ -76,10 +75,69 @@ router.get("/specific/noparent", async (req, res) => {
   res.send(categories);
 });
 
-// getting root categories
+// creating categories
+router.post("/", async (req, res) => {
+  const { error } = validate(req.body);
+  if (error) return res.status(400).send(error.details[0].message);
+
+  let siblingsList,
+    parentCategory = null;
+  //check is there parent category which is specified
+  if (req.body.parentCategory) {
+    parentCategory = await _findCategoryById(req.body.parentCategory);
+    if (!parentCategory)
+      return res.status(400).send("No such parent Category found.");
+
+    //validate no same categories in certain branch of categories tree
+    if (parentCategory.hasChild) {
+      siblingsList = await childsOf(req.body.parentCategory);
+      let matchedCategory = siblingsList.find(c => c.name === req.body.name);
+      if (matchedCategory)
+        return res.status(400).send("Category already found.");
+    }
+  }
+  //find childs of parentCategory
+
+  let category = new Category(req.body);
+
+  try {
+    await category.save();
+    res.send(category);
+    //update has child of parent of new category
+    if (!parentCategory.hasChild) {
+      const updatedParentCategory = await toggleHasChild(parentCategory._id);
+      console.log("Updated Parent Category", updatedParentCategory);
+    }
+  } catch (error) {
+    res.status(400).send(error);
+  }
+});
+async function categoryExists(id) {
+  return await _findCategoryById(id);
+}
+
+async function isUnique({ name, parentCategory: parentCategoryId }) {
+  let siblingsList,
+    parentCategory = null;
+  //check is there parent category which is specified
+  if (parentCategoryId) {
+    parentCategory = await _findCategoryById(parentCategoryId);
+    if (!parentCategory)
+      return res.status(400).send("No such parent Category found.");
+
+    //validate no same categories in certain branch of categories tree
+    if (parentCategory.hasChild) {
+      siblingsList = await childsOf(parentCategoryId);
+      let matchedCategory = siblingsList.find(c => c.name === req.body.name);
+      if (matchedCategory)
+        return res.status(400).send("Category already found.");
+    }
+  }
+}
 router.put("/:id", async (req, res) => {
-  // const { error } = validate(req.body);
-  // if (error) return res.status(400).send(error.details[0].message);
+  const { error } = validate(req.body);
+  if (error) return res.status(400).send(error.details[0].message);
+
   //finde category
   let category = await Category.findOne({ _id: req.params.id });
   if (!category)
@@ -88,6 +146,9 @@ router.put("/:id", async (req, res) => {
   //check if the name is different then confirm its not already present
   if (category.name !== req.body.name) {
     console.log("Names ARE DIFFERENT");
+    if (!isUnique(req.body)) {
+      return res.status(400).send("Category with given name is already exists");
+    }
     category = await Category.findOne({ name: req.body.name });
     if (category)
       return res.status(400).send("Category with given name is already exists");
