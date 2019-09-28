@@ -29,6 +29,65 @@ router.get("/all", async (req, res) => {
   res.send(categories);
 });
 
+//categories' Childs
+router.get("/childsOf/:id", async (req, res) => {
+  const childs = await childsOf(req.params.id);
+  if (!childs) return res.status(404).send("No childs of this category");
+  res.send(childs);
+});
+
+// getting one category detail
+router.get("/:id", async (req, res) => {
+  const category = await Category.findById(req.params.id);
+
+  if (!category)
+    return res
+      .status(404)
+      .send("The category with the given ID was not found.");
+
+  res.send(category);
+});
+
+// getting category which has specific parent
+router.get("/specific/parent/:id", async (req, res) => {
+  const category = await Category.findOne({ parentCategory: req.params.id });
+
+  if (!category)
+    return res
+      .status(404)
+      .send("The category with the given Parent ID was not found.");
+
+  res.send(category);
+});
+
+// getting root categories
+router.get("/specific/noparent", async (req, res) => {
+  const categories = await Category.find({ parentCategory: { $eq: null } });
+  if (!categories) return res.status(404).send("No Categories found.");
+  console.log("i am called", categories);
+  res.send(categories);
+});
+
+// getting parent category
+router.get("/find/parent/category/:id", async (req, res) => {
+  const categories = await Category.findOne({ _id: req.params.id });
+
+  if (!categories) return res.status(404).send("No Category found");
+
+  res.send(categories);
+});
+
+//categories' siblings
+router.get("/siblingsOf/:id", async (req, res) => {
+  const category = await Category.findById(req.params.id);
+  if (!category) return res.status(404).send("No such category found");
+  const siblings = await Category.find({
+    parentCategory: category.parentCategory
+  });
+
+  res.send(siblings);
+});
+
 async function childsOf(id) {
   let childs = await Category.find({ parentCategory: id });
   return childs;
@@ -55,26 +114,6 @@ async function toggleHasChild(id) {
     }
   }
 }
-
-// getting category which has specific parent
-router.get("/specific/parent/:id", async (req, res) => {
-  const category = await Category.findOne({ parentCategory: req.params.id });
-
-  if (!category)
-    return res
-      .status(404)
-      .send("The category with the given Parent ID was not found.");
-
-  res.send(category);
-});
-
-// getting root categories
-router.get("/specific/noparent", async (req, res) => {
-  const categories = await Category.find({ parentCategory: { $eq: null } });
-  if (!categories) return res.status(404).send("No Categories found.");
-  console.log(categories);
-  res.send(categories);
-});
 
 // creating categories
 router.post("/", async (req, res) => {
@@ -127,6 +166,7 @@ async function isUnique(name, parentCategory) {
   }
   return true;
 }
+
 router.put("/:id", async (req, res) => {
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
@@ -134,7 +174,6 @@ router.put("/:id", async (req, res) => {
   let category = await Category.findOne({ _id: req.params.id });
   if (!category)
     return res.status(404).send("No Category with given Id found.");
-  if (_.equals(req.body, category)) console.log("both are same");
 
   //find parent category
   let parentCategory = null;
@@ -148,6 +187,18 @@ router.put("/:id", async (req, res) => {
       return res.status(400).send("Category with given name is already exists");
     }
   }
+  //check if parent is being changed
+  if (
+    category.parentCategory &&
+    category.parentCategory != req.body.parentCategory
+  ) {
+    //check old parent has more than 2 childs
+    let childs = await childsOf(category.parentCategory);
+    if (childs.length <= 2) {
+      let oldParent = await toggleHasChild(category.parentCategory);
+      console.log("Old parent", oldParent);
+    }
+  }
   //check for valid parent category
   if (req.body.parentCategory && req.body.parentCategory === req.params.id) {
     return res.status(400).send("category cannot be its own Parent.");
@@ -155,21 +206,22 @@ router.put("/:id", async (req, res) => {
 
   //then update it
   try {
-    category = await Category.replaceOne({ _id: req.params.id }, req.body, {
-      new: true
-    });
+    category = await Category.findByIdAndUpdate(
+      { _id: req.params.id },
+      req.body,
+      {
+        new: true
+      }
+    );
+    let updatedParentCategory = parentCategory;
     if (!parentCategory.hasChild) {
-      const updatedParentCategory = await toggleHasChild(parentCategory._id);
+      updatedParentCategory = await toggleHasChild(parentCategory._id);
       console.log("Updated Parent Category", updatedParentCategory);
     }
+    res.send({ category: category, parent: updatedParentCategory });
   } catch (error) {
     console.log("Error while updating", error);
   }
-
-  if (!category)
-    return res.status(404).send("No Category with given Id found.");
-
-  res.send(category);
 });
 
 // for sentiment analysis
@@ -184,44 +236,24 @@ router.post("/sentiment/selection", async (req, res) => {
   res.send(category);
 });
 
-// getting parent category
-router.get("/find/parent/category/:id", async (req, res) => {
-  const categories = await Category.findOne({ _id: req.params.id });
-
-  if (!categories) return res.status(404).send("No Category found");
-
-  res.send(categories);
-});
-
-//categories' siblings
-router.get("/siblingsOf/:id", async (req, res) => {
-  console.log("Requested id", req.params.id);
+router.delete("/:id", async (req, res) => {
   const category = await Category.findById(req.params.id);
-  if (!category) return res.status(404).send("No such category found");
-  const siblings = await Category.find({
-    parentCategory: category.parentCategory
-  });
-
-  res.send(siblings);
-});
-
-//categories' Childs
-router.get("/childsOf/:id", async (req, res) => {
-  const childs = await Category.find({ parentCategory: req.params.id });
-  if (!childs) return res.status(404).send("No childs of this category");
-
-  res.send(childs);
-});
-// getting one category detail
-router.get("/:id", async (req, res) => {
-  const category = await Category.findById(req.params.id);
-
-  if (!category)
-    return res
-      .status(404)
-      .send("The category with the given ID was not found.");
-
-  res.send(category);
+  if (!category.hasChild) {
+    //make has child false of the parent of deleting catg if no child left
+    if (category.parentCategory) {
+      let childs = await childsOf(category.parentCategory);
+      if (childs.length <= 1) {
+        await toggleHasChild(category.parentCategory);
+      }
+    }
+    try {
+      await category.remove();
+      return res.send(category);
+    } catch (error) {
+      return res.send(error);
+    }
+  }
+  return res.status(400).send("You cannot delete this category");
 });
 
 module.exports = router;
