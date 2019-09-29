@@ -29,7 +29,9 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
   const complaint = await Complaint.findById(req.params.id);
   if (!complaint)
     return res.status(404).send("Complaint with given ID was not found.");
-
+  if (complaint.status !== "in-progress") {
+    return res.status(400).send("complaint is already closed");
+  }
   const admin = await Admin.findOne().limit(1);
 
   complaint.assignedTo = {
@@ -53,7 +55,9 @@ router.put("/:spam/:id", authAssignee, async (req, res) => {
   const complaint = await Complaint.findById(req.params.id);
   if (!complaint)
     return res.status(404).send("Complaint with given ID was not found.");
-
+  if (complaint.status !== "in-progress") {
+    return res.status(400).send("complaint is already closed");
+  }
   complaint.spam = req.params.spam;
   complaint.status = "closed - relief can't be granted";
   complaint.spamBy = req.assignee._id;
