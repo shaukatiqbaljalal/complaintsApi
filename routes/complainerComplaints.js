@@ -77,14 +77,14 @@ router.post(
     // if (error) return res.status(400).send(error.details[0].message);
 
     const severity = checkSeverity(req.body.details);
-
     const category = await Category.findById(req.body.categoryId);
     if (!category) return res.status(400).send("Invalid category.");
+    console.log(category._id);
 
     const assignee = await Assignee.findOne({
-      responsibility: category
+      "responsibilities._id": category._id.toString()
     });
-
+    console.log("Assignee", assignee);
     let adminAssignee = null;
     if (!assignee) {
       adminAssignee = await Admin.findOne().limit(1);

@@ -141,17 +141,19 @@ router.post(
     for (let index = 0; index < users.length; index++) {
       const user = users[index];
       const tempArray = user.responsibilities;
-      const userResponsibilities = user.responsibilities.split(">");
-      const responsibilities = [];
-      //fetch categories objects into responsibities
-      for (let index = 0; index < userResponsibilities.length; index++) {
-        const categoryName = userResponsibilities[index].trim();
-        const result = await getCategoryByName(categoryName);
-        if (result) {
-          responsibilities.push(result);
+      if (user.responsibilities) {
+        const userResponsibilities = user.responsibilities.split(">");
+        const responsibilities = [];
+        //fetch categories objects into responsibities
+        for (let index = 0; index < userResponsibilities.length; index++) {
+          const categoryName = userResponsibilities[index].trim();
+          const result = await getCategoryByName(categoryName);
+          if (result) {
+            responsibilities.push(result);
+          }
         }
+        user.responsibilities = responsibilities;
       }
-      user.responsibilities = responsibilities;
       console.log("user after responsibilities", user);
       const { error } = validate(user);
       if (error) {

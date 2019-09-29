@@ -30,13 +30,6 @@ const plumbing = [
   "valves"
 ];
 
-const plumbing2 = ["plumbing2"];
-
-const harrasment = ["harrasment"];
-const harrasment2 = ["harasment2"];
-const harrasment3 = ["harasment3"];
-const harrasment12 = ["harasment12"];
-
 const checkCategory = details => {
   const sentiment = new Sentiment();
   const tokens = sentiment.analyze(details).tokens;
@@ -46,11 +39,6 @@ const checkCategory = details => {
   let electricCount = 0;
   let accountsCount = 0;
   let plumbingCount = 0;
-  let plumbing2Count = 0;
-  let harrasmentCount = 0;
-  let harasment2Count = 0;
-  let harasment3Count = 0;
-  let harasment12Count = 0;
   let category = "";
 
   tokens.forEach(token => {
@@ -75,42 +63,7 @@ const checkCategory = details => {
       }
     });
 
-    plumbing2.forEach(pl2 => {
-      if (token === pl2) {
-        plumbing2Count++;
-      }
-    });
-
-    harrasment.forEach(hr => {
-      if (token === hr) {
-        harrasmentCount++;
-      }
-    });
-    harrasment2.forEach(hr2 => {
-      if (token === hr2) {
-        harasment2Count++;
-      }
-    });
-    harrasment3.forEach(hr3 => {
-      if (token === hr3) {
-        harasment3Count++;
-      }
-    });
-    harrasment12.forEach(hr12 => {
-      if (token === hr12) {
-        harasment12Count++;
-      }
-    });
-
-    if (harasment12Count > 0) {
-      category = "harasment 12";
-    } else if (harasment2Count > 0) {
-      category = "harasment 2";
-    } else if (harasment3Count > 0) {
-      category = "harasment 3";
-    } else if (harrasmentCount > 0) {
-      category = "Harrasment";
-    } else if (electricCount === accountsCount && plumbingCount === 0) {
+    if (electricCount === accountsCount && plumbingCount === 0) {
       category = "Electrical";
     } else if (electricCount === plumbingCount && accountsCount === 0) {
       category = "General";

@@ -34,7 +34,7 @@ module.exports = str => {
   console.log("negative count", negCount);
   console.log("adverb count", adverbCount);
 
-  let severity = "";
+  let severity = "Medium";
   // for severity
   if (negativeWords > positiveWords) {
     console.log("negWords > posWords");

@@ -65,7 +65,6 @@ router.get("/specific/parent/:id", async (req, res) => {
 router.get("/specific/noparent", async (req, res) => {
   const categories = await Category.find({ parentCategory: { $eq: null } });
   if (!categories) return res.status(404).send("No Categories found.");
-  console.log("i am called", categories);
   res.send(categories);
 });
 
@@ -120,11 +119,15 @@ async function toggleHasChild(id) {
 router.post("/", async (req, res) => {
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
-
+  if (req.body.parentCategory == "5d90d9c4ea49f82cb84d112f") {
+    console.log("Ids equal");
+    req.body.parentCategory = null;
+  }
   let siblingsList,
     parentCategory = null;
   //check is there parent category which is specified
   if (req.body.parentCategory) {
+    console.log("inside");
     parentCategory = await _findCategoryById(req.body.parentCategory);
     if (!parentCategory)
       return res.status(400).send("No such parent Category found.");
@@ -136,6 +139,13 @@ router.post("/", async (req, res) => {
       if (matchedCategory)
         return res.status(400).send("Category already found.");
     }
+  } else {
+    console.log("Inside else", req.body);
+    let category = await Category.findOne({
+      parentCategory: null,
+      name: req.body.name
+    });
+    if (category) return res.status(400).send("Category Already Exists");
   }
   //find childs of parentCategory
 
