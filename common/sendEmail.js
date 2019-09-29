@@ -2,12 +2,12 @@ const nodeMailer = require("nodemailer");
 var transporter = nodeMailer.createTransport({
   service: "gmail",
   auth: {
-    user: "shaukat.iqbal3001@gmail.com",
-    pass: "238923Shaukat"
+    user: "crunchtech300@gmail.com",
+    pass: "23crunch23"
   }
 });
 module.exports = function(options) {
-  if (!options.from) options.from = "shaukat.iqbal3001@gmail.com";
+  if (!options.from) options.from = "crunchtech300@gmail.com";
   transporter
     .sendMail(options)
     .then(result => {
@@ -22,7 +22,7 @@ module.exports.getEmailOptions = function(
   password,
   subject,
   role,
-  from = "shaukat.iqbal3001@gmail.com"
+  from = "crunchtech300@gmail.com"
 ) {
   const body = `<h4>You are registered on Quick Response Feedback System</h4><br/>
     <p>Kindly visit the site ${origin}/login</p>
