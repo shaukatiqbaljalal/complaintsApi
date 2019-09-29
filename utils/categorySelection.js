@@ -114,11 +114,14 @@ const checkCategory = details => {
       category = "Electrical";
     } else if (electricCount === plumbingCount && accountsCount === 0) {
       category = "General";
-    } else if (electricCount > 0) {
+    }
+    if (electricCount > 0) {
       category = "Electrical";
-    } else if (electricCount === 0 && accountsCount > 0) {
+    }
+    if (electricCount === 0 && accountsCount > 0) {
       category = "Accounts";
-    } else if (accountsCount === 0 && plumbingCount > 0) {
+    }
+    if (accountsCount === 0 && plumbingCount > 0) {
       category = "Plumbing";
     } else {
       category = "General";

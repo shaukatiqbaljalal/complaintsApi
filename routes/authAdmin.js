@@ -11,8 +11,6 @@ router.post("/", async (req, res) => {
   if (error) return res.status(400).send(error.details[0].message);
 
   let admin = await Admin.findOne({ email: req.body.email });
-  console.log(admin);
-  console.log("After Admin");
   if (!admin) return res.status(400).send("Invalid email or password.");
   if (req.body.password !== decrypt(admin.password))
     return res.status(400).send("Invalid email or password.");
