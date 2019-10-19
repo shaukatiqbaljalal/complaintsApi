@@ -13,6 +13,7 @@ const complainers = require("./routes/complainers");
 const assignees = require("./routes/assignees");
 const admins = require("./routes/admins");
 const higherAuthorities = require("./routes/higherAuthorities");
+const configuration = require("./routes/configurations");
 const attachments = require("./routes/attachments");
 const categories = require("./routes/categories");
 const messages = require("./routes/messages");
@@ -82,8 +83,10 @@ app.use("/api/companies", companies);
 app.use("/api/complainers", complainers);
 app.use("/api/assignees", assignees);
 app.use("/api/admins", admins);
+//For configurations
 app.use("/api/higher-authorities", higherAuthorities);
 app.use("/api/attachments", attachments);
+app.use("/api/config", configuration);
 
 // getting / posting of complaints , role vise
 app.use("/api/complainer-complaints", complainerComplaints);

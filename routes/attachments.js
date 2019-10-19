@@ -5,7 +5,7 @@ const _ = require("lodash");
 
 router.get("/", async (req, res) => {
   let attachments = await AttachmentType.find().select("extentionName maxSize");
-  if (!attachments) res.status(404).send("No Attachment");
+  if (!attachments) return res.status(404).send("No Attachment");
   res.send(attachments);
 });
 
