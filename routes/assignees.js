@@ -2,7 +2,6 @@ const { Assignee, validate } = require("../models/assignee");
 const express = require("express");
 const fs = require("fs");
 const router = express.Router();
-const bcrypt = require("bcryptjs");
 const _ = require("lodash");
 const passwordGenrator = require("./../middleware/passwordGenerator");
 const readCsv = require("./../middleware/readCsv");
@@ -120,7 +119,7 @@ router.post(
       "assignee"
     );
     res.send(_.pick(assignee, ["_id", "name", "email"]));
-    if (req.file) deleteFile(req.file.path);
+    // if (req.file) deleteFile(req.file.path);
     sendEmail(options);
   }
 );
