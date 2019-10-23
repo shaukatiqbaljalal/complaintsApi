@@ -101,28 +101,27 @@ router.post(
 router.put("/:id", upload.single("profilePicture"), async (req, res) => {
   // const { error } = validate(req.body);
   // if (error) return res.status(400).send(error.details[0].message);
-  let admin = await Admin.findOne({ email: req.body.email });
-  if (admin && admin._id != req.params.id)
-    return res.status(400).send("email already registered");
-  const profilePath = req.file ? req.file.path : req.body.profilePath;
-  let profilePicture = null;
-  if (req.file) profilePicture = fs.readFileSync(req.file.path);
-  admin = await Admin.findByIdAndUpdate(
-    req.params.id,
-    {
-      name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone,
-      profilePath: profilePath,
-      profilePicture: profilePicture
-    },
-    { new: true }
-  );
-
+  let admin = await Admin.findById(req.params.id);
   if (!admin)
     return res.status(404).send("The admin with the given ID was not found.");
+  console.log("req body", req.body);
+  const profilePath = req.file ? req.file.path : req.body.profilePath;
+  const updatedUser = {
+    name: req.body.name,
+    email: req.body.email,
+    phone: req.body.phone,
+    profilePath: profilePath,
+    profilePicture: admin.profilePicture
+  };
+  if (req.file) {
+    updatedUser.profilePicture = fs.readFileSync(req.file.path);
+  }
 
+  admin = await Admin.findByIdAndUpdate(req.params.id, updatedUser, {
+    new: true
+  });
   res.send(admin);
+  if (req.file) deleteFile(req.file.path);
 });
 
 module.exports = router;

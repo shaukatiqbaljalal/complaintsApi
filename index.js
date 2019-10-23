@@ -10,6 +10,7 @@ const app = express();
 const users = require("./routes/users");
 const companies = require("./routes/companies");
 const complainers = require("./routes/complainers");
+const companyDetails = require("./routes/companyDetails");
 const assignees = require("./routes/assignees");
 const admins = require("./routes/admins");
 const higherAuthorities = require("./routes/higherAuthorities");
@@ -84,6 +85,7 @@ app.use("/api/complainers", complainers);
 app.use("/api/assignees", assignees);
 app.use("/api/admins", admins);
 //For configurations
+app.use("/api/company-details", companyDetails);
 app.use("/api/higher-authorities", higherAuthorities);
 app.use("/api/attachments", attachments);
 app.use("/api/config", configuration);
