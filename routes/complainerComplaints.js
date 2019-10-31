@@ -285,14 +285,14 @@ router.get("/get/all/resolved", async (req, res) => {
 });
 
 // Complainer can get any complaint by ID -- Complainer
-router.get("/:id", authComplainer, async (req, res) => {
+router.get("/:id", async (req, res) => {
   const complaint = await Complaint.findOne({
-    _id: req.params.id,
-    complainer: req.complainer._id
+    _id: req.params.id
   })
     .select(
       "_id title status location spam details files remarks timeStamp feedbackRemarks feedbackTags"
     )
+    .populate("complainer", "name _id")
     .populate("assignedTo", "name _id")
     .populate("category", "name _id");
 
