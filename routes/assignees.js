@@ -151,6 +151,7 @@ router.post(
     for (let index = 0; index < users.length; index++) {
       const user = users[index];
       const tempArray = user.responsibilities;
+
       if (user.responsibilities) {
         const userResponsibilities = user.responsibilities.split(">");
         const responsibilities = [];
