@@ -1,6 +1,8 @@
 const { Category, validate } = require("../models/category");
 const { Assignee } = require("../models/assignee");
 const { categorySelection } = require("../utils/categorySelection");
+const { capitalizeFirstLetter } = require("./../common/helper");
+
 const authAssignee = require("../middleware/authAssignee");
 const express = require("express");
 const router = express.Router();
@@ -225,7 +227,8 @@ router.put("/updatebulk", async (req, res) => {
   if (errors.length < 1) {
     return res.status(200).send("Successfully Updated");
   } else {
-    return res.send("Some errors occured");
+    console.log(errors);
+    return res.status(400).send({ err: errors });
   }
 });
 
