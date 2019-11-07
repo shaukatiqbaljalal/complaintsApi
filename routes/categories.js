@@ -180,6 +180,7 @@ async function isUnique(name, parentCategory) {
   }
   return true;
 }
+
 router.post("/bulk", async (req, res) => {
   let categories = req.body.categories;
   if (categories.length < 0)
@@ -189,8 +190,10 @@ router.post("/bulk", async (req, res) => {
   let index = categories.findIndex(c => c.name === "General");
   if (index >= 0) categories.splice(index, 1);
   //if there is no category in DB
-  let length = await Category.find().length;
-  if (!length) {
+  let categoriesInDb = await Category.find();
+  let generaIndex = categoriesInDb.findIndex(c => c.name === "General");
+
+  if (categoriesInDb.length > 0 && generaIndex >= 0) {
     categories.push({
       id: categories.length + 1,
       name: "General",
