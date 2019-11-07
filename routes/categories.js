@@ -182,8 +182,21 @@ async function isUnique(name, parentCategory) {
 }
 router.post("/bulk", async (req, res) => {
   let categories = req.body.categories;
+  if (categories.length < 0)
+    return res.status(400).send("No categories in the body");
   let ids = [];
   let docs = [];
+  let index = categories.findIndex(c => c.name === "General");
+  if (index >= 0) categories.splice(index, 1);
+  //if there is no category in DB
+  let length = await Category.find().length;
+  if (!length) {
+    categories.push({
+      id: categories.length + 1,
+      name: "General",
+      hasChild: false
+    });
+  }
   // List<Category> documents= new ArrayList();
   categories.forEach(category => {
     let oldId = category._id;
