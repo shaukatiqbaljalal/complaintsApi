@@ -1,8 +1,8 @@
 const { Assignee, validate } = require("../models/assignee");
+const { Category } = require("../models/category");
 const express = require("express");
 const fs = require("fs");
 const router = express.Router();
-const bcrypt = require("bcryptjs");
 const _ = require("lodash");
 const passwordGenrator = require("./../middleware/passwordGenerator");
 const readCsv = require("./../middleware/readCsv");
@@ -13,6 +13,7 @@ const multer = require("multer");
 const encrypt = require("./../common/encrypt");
 const sendEmail = require("../common/sendEmail");
 const { getEmailOptions } = require("../common/sendEmail");
+const { capitalizeFirstLetter } = require("./../common/helper");
 // multer storageor
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -46,6 +47,17 @@ const upload = multer({
   storage: multerStorage,
   fileFilter: multerFilter
 });
+
+// router.get("/allUsers/:pageSize", async (req, res) => {
+//   console.log(req.headers);
+//   const assignees = await Assignee.find().limit(+req.params.pageSize);
+//   const numOfUsers = await Assignee.count();
+//   if (!assignees) return res.status(404).send("There are no Assignees.");
+//   res
+//     .header("count", numOfUsers)
+//     .status(200)
+//     .send(assignees);
+// });
 
 router.get("/all", async (req, res) => {
   const assignees = await Assignee.find();
@@ -120,7 +132,7 @@ router.post(
       "assignee"
     );
     res.send(_.pick(assignee, ["_id", "name", "email"]));
-    if (req.file) deleteFile(req.file.path);
+    // if (req.file) deleteFile(req.file.path);
     sendEmail(options);
   }
 );
@@ -141,35 +153,73 @@ router.post(
     for (let index = 0; index < users.length; index++) {
       const user = users[index];
       const tempArray = user.responsibilities;
+      const responsibilities = [];
+
+      //This block only fetches given categories details and puts in user.responsibilities
       if (user.responsibilities) {
-        const userResponsibilities = user.responsibilities.split(">");
-        const responsibilities = [];
-        //fetch categories objects into responsibities
-        for (let index = 0; index < userResponsibilities.length; index++) {
-          const categoryName = userResponsibilities[index].trim();
-          const result = await getCategoryByName(categoryName);
-          if (result) {
-            responsibilities.push(result);
+        const categoryPathsArray = user.responsibilities.split("+");
+        console.log(categoryPathsArray, "All Paths");
+        //each path will be iterated through
+        for (let j = 0; j < categoryPathsArray.length; j++) {
+          const path = categoryPathsArray[j];
+
+          const categoriesInPath = path.split(">");
+          console.log("Certain Categories in path", categoriesInPath);
+          //this loop will find categories in the path and the last one in array will be assigned to user
+          let category = null;
+          let parentCategory = null;
+          let childs = [];
+          for (let i = 0; i < categoriesInPath.length; i++) {
+            const categoryName = capitalizeFirstLetter(
+              categoriesInPath[i].trim().toLowerCase()
+            );
+
+            console.log(categoryName, "Category names");
+
+            if (i == 0) {
+              category = await Category.findOne({
+                parentCategory: null,
+                name: categoryName
+              });
+              console.log("root category", category);
+            } else {
+              category = childs.find(c => c.name === categoryName);
+            }
+            //if  category with given name is not found
+            //break loop and go for the next path
+            //add message into user object as well i.e root category not found
+
+            if (!category) {
+              user.responsibilities = tempArray;
+              user.message = `The category named '${categoryName}' is not found, So the whole path is invalid and given responsbility is skipped.`;
+              console.log(user.message);
+              errors.push(user);
+              break;
+            }
+
+            console.log("Category found");
+            //If category found and it is last in path array
+            if (i === categoriesInPath.length - 1)
+              responsibilities.push(category);
+            else childs = await Category.find({ parentCategory: category._id });
+            parentCategory = category;
           }
         }
+
         user.responsibilities = responsibilities;
       }
+
       console.log("user after responsibilities", user);
+      //validate user object. if error then skip the account creation
       const { error } = validate(user);
-      if (error) {
-        delete user.password;
-        user.responsibilities = tempArray;
-        user.message = error.details[0].message;
-        errors.push(user);
-        continue;
-      }
-
       let assignee = await Assignee.findOne({ email: user.email });
-      if (assignee) {
+
+      if (error || assignee) {
         delete user.password;
         user.responsibilities = tempArray;
-
-        user.message = "User Already exists";
+        user.message += assignee
+          ? "User Already exists"
+          : "--" + error.details[0].message;
         errors.push(user);
         continue;
       }
@@ -177,19 +227,25 @@ router.post(
       assignee = new Assignee(
         _.pick(user, ["name", "email", "password", "phone", "responsibilities"])
       );
-      // const salt = await bcrypt.genSalt(10);
-      // assignee.password = await bcrypt.hash(assignee.password, salt);
+
       const options = getEmailOptions(
         assignee.email,
         req.get("origin"),
         assignee.password,
-
         "Registration of Account Confirmation",
         "assignee"
       );
+
       assignee.password = encrypt(assignee.password);
-      await assignee.save();
-      sendEmail(options);
+      try {
+        await assignee.save();
+        sendEmail(options);
+      } catch (error) {
+        delete user.password;
+        user.message = JSON.stringify(error);
+        errors.push(user);
+        continue;
+      }
     }
     sendCsvToClient(req, res, errors);
     if (req.file) deleteFile(req.file.path);

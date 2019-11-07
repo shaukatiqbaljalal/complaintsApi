@@ -48,6 +48,18 @@ const upload = multer({
   fileFilter: multerFilter
 });
 
+// router.get("/allUsers/:pageSize", async (req, res) => {
+//   const complainers = await Complainer.find().limit(+req.params.pageSize);
+//   const numOfUsers = await Complainer.count();
+//   const hasMore = numOfUsers - req.params.pageSize > 0;
+//   if (!complainers) return res.status(404).send("There are no complainers.");
+//   console.log(complainers, numOfUsers, hasMore);
+//   res
+//     .header("count", numOfUsers)
+//     .status(200)
+//     .send(complainers);
+// });
+
 router.get("/all", async (req, res) => {
   const complainers = await Complainer.find();
 

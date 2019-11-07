@@ -1,6 +1,8 @@
 const { Category, validate } = require("../models/category");
 const { Assignee } = require("../models/assignee");
 const { categorySelection } = require("../utils/categorySelection");
+const { capitalizeFirstLetter } = require("./../common/helper");
+
 const authAssignee = require("../middleware/authAssignee");
 const express = require("express");
 const router = express.Router();
@@ -142,7 +144,6 @@ router.post("/", async (req, res) => {
         return res.status(400).send("Category already found.");
     }
   } else {
-    console.log("Inside else", req.body);
     let category = await Category.findOne({
       parentCategory: null,
       name: req.body.name
@@ -157,7 +158,7 @@ router.post("/", async (req, res) => {
     await category.save();
     res.send(category);
     //update has child of parent of new category
-    if (!parentCategory.hasChild) {
+    if (parentCategory && !parentCategory.hasChild) {
       const updatedParentCategory = await toggleHasChild(parentCategory._id);
       console.log("Updated Parent Category", updatedParentCategory);
     }
@@ -179,6 +180,73 @@ async function isUnique(name, parentCategory) {
   }
   return true;
 }
+
+router.post("/bulk", async (req, res) => {
+  let categories = req.body.categories;
+  if (categories.length < 0)
+    return res.status(400).send("No categories in the body");
+  let ids = [];
+  let docs = [];
+  let index = categories.findIndex(c => c.name === "General");
+  if (index >= 0) categories.splice(index, 1);
+  //if there is no category in DB
+  let categoriesInDb = await Category.find();
+  let generaIndex = categoriesInDb.findIndex(c => c.name === "General");
+
+  if (categoriesInDb.length > 0 && generaIndex >= 0) {
+    categories.push({
+      id: categories.length + 1,
+      name: "General",
+      hasChild: false
+    });
+  }
+  // List<Category> documents= new ArrayList();
+  categories.forEach(category => {
+    let oldId = category._id;
+    delete category._id;
+    if (category.parentCategory) {
+      let newParentCategory = ids.find(
+        obj => obj.oldId == category.parentCategory
+      ).newId;
+      category.parentCategory = newParentCategory;
+    }
+    let persistentCategory = new Category(category);
+    ids.push({ oldId: oldId, newId: persistentCategory._id });
+    docs.push(persistentCategory);
+  });
+  console.log(ids);
+  console.log(docs);
+  Category.collection.insertMany(docs, (err, result) => {
+    if (err) res.status(400).send(err);
+    else {
+      console.log(result);
+      res.status(200).send("Successful");
+    }
+  });
+});
+
+router.put("/updatebulk", async (req, res) => {
+  let errors = [];
+  if (!req.body.categories) return res.status(400).send("No category provided");
+  let { categories } = req.body;
+  console.log(categories);
+  categories.forEach(async category => {
+    let id = category._id;
+    delete category._id;
+    try {
+      await Category.findByIdAndUpdate({ _id: id }, category);
+    } catch (error) {
+      // return res.status(500).send("Could not perform the task" + error);
+      errors.push(error);
+    }
+  });
+  if (errors.length < 1) {
+    return res.status(200).send("Successfully Updated");
+  } else {
+    console.log(errors);
+    return res.status(400).send({ err: errors });
+  }
+});
 
 router.put("/:id", async (req, res) => {
   const { error } = validate(req.body);
