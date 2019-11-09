@@ -32,6 +32,7 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
   if (complaint.status !== "in-progress") {
     return res.status(400).send("complaint is already closed");
   }
+  console.log("after");
   const admin = await Admin.findOne().limit(1);
 
   complaint.assignedTo = {

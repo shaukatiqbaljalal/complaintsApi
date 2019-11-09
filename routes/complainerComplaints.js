@@ -94,12 +94,11 @@ router.post(
     const severity = checkSeverity(req.body.details);
     const category = await Category.findById(req.body.categoryId);
     if (!category) return res.status(400).send("Invalid category.");
-    console.log(category._id);
 
     const assignee = await Assignee.findOne({
       "responsibilities._id": category._id.toString()
     });
-    console.log("Assignee", assignee);
+
     let adminAssignee = null;
     if (!assignee) {
       adminAssignee = await Admin.findOne().limit(1);
@@ -300,14 +299,14 @@ router.get("/get/all/resolved", async (req, res) => {
 });
 
 // Complainer can get any complaint by ID -- Complainer
-router.get("/:id", authComplainer, async (req, res) => {
+router.get("/:id", async (req, res) => {
   const complaint = await Complaint.findOne({
-    _id: req.params.id,
-    complainer: req.complainer._id
+    _id: req.params.id
   })
     .select(
       "_id title status location spam details files remarks timeStamp feedbackRemarks feedbackTags"
     )
+    .populate("complainer", "name _id")
     .populate("assignedTo", "name _id")
     .populate("category", "name _id");
 

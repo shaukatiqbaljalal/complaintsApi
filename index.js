@@ -57,13 +57,11 @@ mongoose
         console.log("Client is disconnected");
       });
     });
-
     // io.on("connect", socket => {
     //   console.log("New client connected connect");
     // });
   })
   .catch(err => console.error("Could not connect to MongoDB..."));
-
 // ---------------------//
 
 // express & other middlewares
