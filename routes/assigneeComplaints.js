@@ -11,7 +11,6 @@ router.get("/", authAssignee, async (req, res) => {
     assignedTo: req.assignee._id,
     spam: false
   })
-    .select("_id title status")
     .populate("assignedTo", "name -_id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
@@ -119,9 +118,6 @@ router.get("/:id", authAssignee, async (req, res) => {
     _id: req.params.id,
     assignedTo: req.assignee._id
   })
-    .select(
-      "_id title status location spam details files remarks timeStamp feedbackRemarks feedbackTags"
-    )
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");

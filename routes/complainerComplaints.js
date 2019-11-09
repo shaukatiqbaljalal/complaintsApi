@@ -13,6 +13,7 @@ const express = require("express");
 const multer = require("multer");
 const router = express.Router();
 const { AttachmentType } = require("../models/attachment");
+const capitalizeFirstLetter = require("./../common/helper");
 
 const _ = require("lodash");
 
@@ -49,7 +50,6 @@ router.get("/", authComplainer, async (req, res) => {
   })
     // .populate('complainer', 'name -_id')
     // .populate('assignedTo', 'name -_id')
-    .select("_id title status")
     .populate("assignedTo", "name _id")
     .populate("category", "name _id");
 
@@ -78,6 +78,8 @@ router.post(
     console.log(req.body);
     // const { error } = validate(req.body);
     // if (error) return res.status(400).send(error.details[0].message);
+
+    // Validate the attached file is allowed
     if (req.file) {
       let attachments = await AttachmentType.find().select(
         "extentionName maxSize"
@@ -91,23 +93,37 @@ router.post(
           .status(400)
           .send("The attached file is larger than allowed size.");
     }
+
     const severity = checkSeverity(req.body.details);
     const category = await Category.findById(req.body.categoryId);
     if (!category) return res.status(400).send("Invalid category.");
 
-    const assignee = await Assignee.findOne({
+    const assignees = await Assignee.find({
       "responsibilities._id": category._id.toString()
-    });
-
+    }).select("name");
     let adminAssignee = null;
-    if (!assignee) {
+    let assignee;
+    if (!assignees.length) {
       adminAssignee = await Admin.findOne().limit(1);
+    } else {
+      let countArr = [];
+
+      for (let index = 0; index < assignees.length; index++) {
+        const a = assignees[index];
+        let complaints = await Complaint.find({
+          assignedTo: a._id
+        }).count((err, count) => {
+          countArr.push(count);
+        });
+      }
+      let index = countArr.indexOf(Math.min(...countArr));
+      assignee = assignees[index];
     }
 
     const complainer = await Complainer.findById(req.complainer._id);
     if (!complainer) return res.status(400).send("Invalid Complainer.");
 
-    const title = req.body.title.toLowerCase();
+    const title = capitalizeFirstLetter(req.body.title);
 
     let complaint = new Complaint({
       category: {
