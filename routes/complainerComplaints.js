@@ -12,6 +12,8 @@ const io = require("../socket");
 const express = require("express");
 const multer = require("multer");
 const router = express.Router();
+const { AttachmentType } = require("../models/attachment");
+
 const _ = require("lodash");
 
 // multer storage
@@ -25,19 +27,19 @@ const multerStorage = multer.diskStorage({
   }
 });
 
-// multer filter
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image")) {
-    cb(null, true);
-  } else {
-    cb("Only images are allowed", false);
-  }
-};
+// // multer filter
+// const multerFilter = (req, file, cb) => {
+//   if (file.mimetype.startsWith("image")) {
+//     cb(null, true);
+//   } else {
+//     cb("Only images are allowed", false);
+//   }
+// };
 
 // multer upload
 const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter
+  storage: multerStorage
+  // fileFilter: multerFilter
 });
 
 // complainer can find only his complaints -- Complainer
@@ -73,9 +75,22 @@ router.post(
   authComplainer,
   upload.single("complaint"),
   async (req, res) => {
+    console.log(req.body);
     // const { error } = validate(req.body);
     // if (error) return res.status(400).send(error.details[0].message);
-
+    if (req.file) {
+      let attachments = await AttachmentType.find().select(
+        "extentionName maxSize"
+      );
+      let ext = req.file.mimetype.split("/")[1].toLowerCase();
+      let type = attachments.find(a => a.extentionName === ext);
+      if (!type)
+        return res.status(400).send("The attached file is not allowed");
+      if (req.file.size / 1024 > +type.maxSize)
+        return res
+          .status(400)
+          .send("The attached file is larger than allowed size.");
+    }
     const severity = checkSeverity(req.body.details);
     const category = await Category.findById(req.body.categoryId);
     if (!category) return res.status(400).send("Invalid category.");

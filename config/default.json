@@ -1,3 +1,7 @@
 {
-  "jwtPrivateKey": "quickresponse_jwtPrivateKey"
+  "jwtPrivateKey": "quickresponse_jwtPrivateKey",
+  "emailServer": {
+    "email": "crunchtech300@gmail.com",
+    "password": "23crunch23"
+  }
 }

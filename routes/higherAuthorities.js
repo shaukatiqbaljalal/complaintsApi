@@ -4,11 +4,30 @@ const router = express.Router();
 const _ = require("lodash");
 const encrypt = require("./../common/encrypt");
 const passwordGenrator = require("./../middleware/passwordGenerator");
-
+const { getReportsEmailOptions } = require("../common/sendEmail");
+const sendEmail = require("../common/sendEmail");
+const path = require("path");
 router.get("/", async (req, res) => {
   let members = await Authority.find().select("name email designation ");
   if (!members) res.status(404).send("No member");
   res.send(members);
+});
+
+router.post("/sendreports/members", async (req, res) => {
+  let recieversList = JSON.parse(req.body.recievers);
+  console.log(recieversList);
+  console.log(req.body.reportName);
+  const filePath = path.join("public", "files", "reports", req.body.reportName);
+  for (let index = 0; index < recieversList.length; index++) {
+    const reciever = recieversList[index];
+    const options = getReportsEmailOptions(
+      reciever.email,
+      "Complaints Summary",
+      filePath
+    );
+    console.log(options);
+    sendEmail(options);
+  }
 });
 
 router.post("/", passwordGenrator, async (req, res) => {

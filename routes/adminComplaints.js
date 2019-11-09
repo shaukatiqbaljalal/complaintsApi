@@ -12,7 +12,6 @@ const path = require("path");
 // Getting complaints of Admin -- Admin
 router.get("/", authAdmin, async (req, res) => {
   const complaints = await Complaint.find()
-    .select("_id title status")
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
@@ -49,15 +48,30 @@ router.get("/:id", authAdmin, async (req, res) => {
   res.send(complaint);
 });
 
-// generating reports pdf
-router.get("/generate/pdf/v1", async (req, res, next) => {
+router.get("/generateReport/pdf/:from/:to", async (req, res) => {
   try {
-    const cmp = await Complaint.find();
-    const spamcomplaints = await Complaint.find({ spam: true });
-    const rescomplaints = await Complaint.find({
-      status: { $ne: "in-progress" }
+    const allComplaints = await Complaint.find();
+
+    console.log(allComplaints);
+    let from = new Date(req.params.from);
+    let to = new Date(req.params.to);
+    let complaints = [];
+    let resolved = 0,
+      spam = 0,
+      inProgress = 0;
+
+    allComplaints.forEach(complaint => {
+      let date = new Date(complaint.timeStamp);
+      if (from.getTime() <= date.getTime() && date.getTime() <= to.getTime()) {
+        complaints.push(complaint);
+        if (complaint.spam) {
+          spam++;
+        } else {
+          if ((complaint.status = "in-progress")) inProgress++;
+          else resolved++;
+        }
+      }
     });
-    const progcomplaints = await Complaint.find({ status: "in-progress" });
 
     const pdfDoc = new PDFDocument();
     const reportName = "report" + Date.now() + ".pdf";
@@ -79,17 +93,17 @@ router.get("/generate/pdf/v1", async (req, res, next) => {
     pdfDoc.text(
       "We have generated this report just to let you know the overall situation in the organization."
     );
+    pdfDoc.text(" ");
+    pdfDoc.text(`This data is from ${req.params.from} to ${req.params.to} `);
     pdfDoc.moveDown();
 
-    pdfDoc.fontSize(15).text(`Total Complaints: ${cmp.length} `);
+    pdfDoc.fontSize(15).text(`Total Complaints: ${complaints.length} `);
     pdfDoc
       .fillColor("red")
       .fontSize(12)
-      .text(`Spam Complaints: ${spamcomplaints.length} `);
-    pdfDoc
-      .fillColor("green")
-      .text(`Resolved Complaints: ${rescomplaints.length} `);
-    pdfDoc.text(`In Progress Complaints: ${progcomplaints.length} `);
+      .text(`Spam Complaints: ${spam} `);
+    pdfDoc.fillColor("green").text(`Resolved Complaints: ${resolved} `);
+    pdfDoc.text(`In Progress Complaints: ${inProgress} `);
 
     pdfDoc.fillColor("black").text("Regards", { align: "right" });
 
@@ -111,23 +125,6 @@ router.get("/generate/pdf/v1", async (req, res, next) => {
 
     pdfDoc.end();
 
-    // fs.readFile(pdfPath, (err, data) => {
-    //   if (err) return next(err);
-
-    //   res.setHeader("Content-Type", "application/pdf");
-    //   res.setHeader(
-    //     "Content-Disposition",
-    //     'inline; filename="' + reportName + '"'
-    //   );
-
-    //   res.send(data);
-    // });
-
-    // const file = fs.createReadStream(pdfPath);
-    // res.setHeader("Content-Type", "application/pdf");
-    // res.setHeader("Content-Disposition", 'inline; filename="' + reportName + '"');
-    // file.pipe(res);
-
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
@@ -136,8 +133,8 @@ router.get("/generate/pdf/v1", async (req, res, next) => {
     res
       .header("filename", pdfPath)
       .header("access-control-expose-headers", "filename");
-  } catch (ex) {
-    console.log("Error has occured.");
+  } catch (error) {
+    return res.send(error);
   }
 });
 
