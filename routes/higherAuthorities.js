@@ -1,4 +1,5 @@
 const { Authority, validate } = require("../models/higherAuthority");
+const deleteFile = require("./../common/deleteFile");
 const express = require("express");
 const router = express.Router();
 const _ = require("lodash");
@@ -28,6 +29,7 @@ router.post("/sendreports/members", async (req, res) => {
     console.log(options);
     sendEmail(options);
   }
+  deleteFile(filePath);
 });
 
 router.post("/", passwordGenrator, async (req, res) => {
