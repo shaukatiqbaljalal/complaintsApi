@@ -3,46 +3,51 @@ const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const config = require("config");
 
-const adminSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    minlength: 5,
-    maxlength: 50
-  },
+const adminSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      minlength: 5,
+      maxlength: 50
+    },
 
-  email: {
-    type: String,
-    required: true,
-    minlength: 5,
-    maxlength: 255,
-    unique: true
-  },
-  phone: {
-    type: String,
-    required: false,
-    minlength: 9,
-    maxlength: 50
-  },
+    email: {
+      type: String,
+      required: true,
+      minlength: 5,
+      maxlength: 255,
+      unique: true
+    },
+    phone: {
+      type: String,
+      required: false,
+      minlength: 9,
+      maxlength: 50
+    },
 
-  password: {
-    type: String,
-    required: true,
-    minlength: 8,
-    maxlength: 1024
+    password: {
+      type: String,
+      required: true,
+      minlength: 8,
+      maxlength: 1024
+    },
+    profilePath: {
+      type: String,
+      required: false,
+      minlength: 5,
+      maxlength: 1024
+    },
+    profilePicture: { type: Buffer },
+    responsibility: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "Category"
+    }
   },
-  profilePath: {
-    type: String,
-    required: false,
-    minlength: 5,
-    maxlength: 1024
-  },
-  profilePicture: { type: Buffer },
-  responsibility: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: "Category"
+  {
+    timestamps: true
   }
-});
+);
 
 adminSchema.methods.generateAuthToken = function() {
   // const profilePicture = this.profilePicture ? this.profilePicture : "";

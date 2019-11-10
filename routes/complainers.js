@@ -1,4 +1,5 @@
 const encrypt = require("./../common/encrypt");
+const capitalizeFirstLetter = require("./../common/helper");
 
 const { Complainer, validate } = require("../models/complainer");
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
@@ -68,9 +69,19 @@ router.get("/all", async (req, res) => {
   res.status(200).send(complainers);
 });
 
+router.get("/count/complainers", async (req, res) => {
+  const complainers = await Complainer.find();
+  let months = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  complainers.forEach(complainer => {
+    let date = new Date(complainer.createdAt);
+    let index = date.getMonth();
+    if (index >= 0) months[index]++;
+  });
+  return res.send(months);
+});
+
 router.get("/:id", async (req, res) => {
   const complainer = await Complainer.findOne({ _id: req.params.id });
-
   if (!complainer) return res.status(404).send("There are no complainer.");
   res.status(200).send(complainer);
 });
@@ -88,7 +99,9 @@ router.post(
   async (req, res) => {
     const { error } = validate(req.body);
     if (error) return res.status(400).send(error.details[0].message);
-    let complainer = await Complainer.findOne({ email: req.body.email });
+    let complainer = await Complainer.findOne({
+      email: req.body.email.toLowerCase()
+    });
 
     if (complainer) return res.status(400).send("User already registered.");
 
@@ -99,6 +112,9 @@ router.post(
       complainer.set("profilePath", req.file.filename);
       complainer.set("profilePicture", fs.readFileSync(req.file.path));
     }
+    complainer.name = capitalizeFirstLetter(complainer.name);
+    complainer.email = complainer.email.toLowerCase();
+
     const options = getEmailOptions(
       complainer.email,
       req.get("origin"),
@@ -159,6 +175,9 @@ router.post(
       complainer = new Complainer(
         _.pick(user, ["name", "email", "password", "phone"])
       );
+
+      complainer.name = capitalizeFirstLetter(complainer.name);
+      complainer.email = complainer.email.toLowerCase();
       // const salt = await bcrypt.genSalt(10);
       // complainer.password = await bcrypt.hash(complainer.password, salt);
       const options = getEmailOptions(
@@ -184,7 +203,9 @@ router.put("/:id", upload.single("profilePicture"), async (req, res) => {
     return res
       .status(404)
       .send("The complainer with the given ID was not found.");
-  complainer = await Complainer.findOne({ email: req.body.email });
+  complainer = await Complainer.findOne({
+    email: req.body.email.toLowerCase()
+  });
   if (complainer && complainer._id != req.params.id)
     return res.status(400).send("email already registered");
   const profilePath = req.file ? req.file.path : req.body.profilePath;
@@ -197,7 +218,7 @@ router.put("/:id", upload.single("profilePicture"), async (req, res) => {
     req.params.id,
     {
       name: req.body.name,
-      email: req.body.email,
+      email: req.body.email.toLowerCase(),
       phone: req.body.phone,
       profilePath: profilePath,
       profilePicture: profilePicture

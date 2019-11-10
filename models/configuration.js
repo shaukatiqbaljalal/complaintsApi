@@ -9,19 +9,24 @@ const configurationSchema = new mongoose.Schema({
   isMessaging: {
     type: Boolean,
     required: true
+  },
+  isSeverity: {
+    type: Boolean,
+    required: true
   }
 });
 
 const Configuration = mongoose.model("Configuration", configurationSchema);
 
-function validateAttachmentType(configuration) {
+function validateConfigurationObject(configuration) {
   const schema = {
     isAccountCreation: Joi.boolean().required(),
-    isMessaging: Joi.boolean().required()
+    isMessaging: Joi.boolean().required(),
+    isSeverity: Joi.boolean().required()
   };
 
   return Joi.validate(configuration, schema);
 }
 
 exports.Configuration = Configuration;
-exports.validate = validateAttachmentType;
+exports.validate = validateConfigurationObject;

@@ -4,53 +4,58 @@ const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const config = require("config");
 
-const assigneeSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    minlength: 5,
-    maxlength: 50
-  },
+const assigneeSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      minlength: 5,
+      maxlength: 50
+    },
 
-  email: {
-    type: String,
-    required: true,
-    minlength: 5,
-    maxlength: 255,
-    unique: true
-  },
-  phone: {
-    type: String,
-    required: false,
-    minlength: 9,
-    maxlength: 50
-  },
+    email: {
+      type: String,
+      required: true,
+      minlength: 5,
+      maxlength: 255,
+      unique: true
+    },
+    phone: {
+      type: String,
+      required: false,
+      minlength: 9,
+      maxlength: 50
+    },
 
-  responsibilities: {
-    type: [{}],
-    ref: "Category",
-    required: false
+    responsibilities: {
+      type: [{}],
+      ref: "Category",
+      required: false
+    },
+    password: {
+      type: String,
+      required: true,
+      minlength: 8,
+      maxlength: 1024
+    },
+    profilePath: {
+      type: String,
+      required: false,
+      minlength: 5,
+      maxlength: 1024
+    },
+    chatWith: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Complainer"
+    },
+    profilePicture: {
+      type: Buffer
+    }
   },
-  password: {
-    type: String,
-    required: true,
-    minlength: 8,
-    maxlength: 1024
-  },
-  profilePath: {
-    type: String,
-    required: false,
-    minlength: 5,
-    maxlength: 1024
-  },
-  chatWith: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Complainer"
-  },
-  profilePicture: {
-    type: Buffer
+  {
+    timestamps: true
   }
-});
+);
 
 assigneeSchema.methods.generateAuthToken = function() {
   // const profilePicture = this.profilePicture ? this.profilePicture : "";

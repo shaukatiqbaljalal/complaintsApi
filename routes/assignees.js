@@ -13,7 +13,7 @@ const multer = require("multer");
 const encrypt = require("./../common/encrypt");
 const sendEmail = require("../common/sendEmail");
 const { getEmailOptions } = require("../common/sendEmail");
-const { capitalizeFirstLetter } = require("./../common/helper");
+const capitalizeFirstLetter = require("./../common/helper");
 // multer storageor
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -107,10 +107,9 @@ router.post(
     if (assignee) return res.status(400).send("User already registered.");
 
     assignee = new Assignee({
-      name: req.body.name,
-      email: req.body.email,
+      name: capitalizeFirstLetter(req.body.name),
+      email: req.body.email.toLowerCase(),
       password: req.body.password,
-
       phone: req.body.phone,
       responsibilities: JSON.parse(req.body.responsibilities)
     });
@@ -170,10 +169,7 @@ router.post(
           let parentCategory = null;
           let childs = [];
           for (let i = 0; i < categoriesInPath.length; i++) {
-            const categoryName = capitalizeFirstLetter(
-              categoriesInPath[i].trim().toLowerCase()
-            );
-
+            const categoryName = categoriesInPath[i].trim();
             console.log(categoryName, "Category names");
 
             if (i == 0) {
@@ -264,8 +260,8 @@ router.put("/:id", upload.single("profilePicture"), async (req, res) => {
   console.log("req body", req.body);
   const profilePath = req.file ? req.file.path : req.body.profilePath;
   const updatedUser = {
-    name: req.body.name,
-    email: req.body.email,
+    name: capitalizeFirstLetter(req.body.name),
+    email: req.body.email.toLowerCase(),
     phone: req.body.phone,
     responsibilities: JSON.parse(req.body.responsibilities),
     profilePath: profilePath,

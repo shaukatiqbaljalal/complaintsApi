@@ -4,6 +4,7 @@ const path = require("path");
 const { Complaint, validate } = require("../models/complaint");
 const { Category } = require("../models/category");
 const { Assignee } = require("../models/assignee");
+const { Configuration } = require("../models/configuration");
 const { Complainer } = require("../models/complainer");
 const { Admin } = require("../models/admin");
 const checkSeverity = require("../utils/severity");
@@ -93,21 +94,40 @@ router.post(
           .status(400)
           .send("The attached file is larger than allowed size.");
     }
+    const configToken = await Configuration.find().limit(1);
+    let severity;
+    if (!req.body.severity) {
+      severity = checkSeverity(req.body.details);
+    } else {
+      switch (+req.body.severity) {
+        case 1:
+          severity = "Low";
+          break;
+        case 2:
+          severity = "Medium";
+          break;
+        case 3:
+          severity = "High";
+          break;
+        default:
+          severity = "Low";
+          break;
+      }
+    }
 
-    const severity = checkSeverity(req.body.details);
     const category = await Category.findById(req.body.categoryId);
     if (!category) return res.status(400).send("Invalid category.");
 
     const assignees = await Assignee.find({
       "responsibilities._id": category._id.toString()
     }).select("name");
+    console.log("Assignees", assignees);
     let adminAssignee = null;
     let assignee;
-    if (!assignees.length) {
+    if (assignees.length < 1) {
       adminAssignee = await Admin.findOne().limit(1);
     } else {
       let countArr = [];
-
       for (let index = 0; index < assignees.length; index++) {
         const a = assignees[index];
         let complaints = await Complaint.find({

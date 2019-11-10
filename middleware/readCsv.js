@@ -1,5 +1,7 @@
 const csv = require("csv-parser");
 const fs = require("fs");
+const capitalizeFirstLetter = require("./../common/helper");
+
 const { generatePassword } = require("./../middleware/passwordGenerator");
 module.exports = async function(req, res, next) {
   let users = [];
@@ -8,8 +10,8 @@ module.exports = async function(req, res, next) {
     .on("data", row => {
       let user = {};
       if (row.name && row.email && row.phone) {
-        user.name = row.name;
-        user.email = row.email;
+        user.name = capitalizeFirstLetter(row.name);
+        user.email = row.email.toLowerCase();
         user.phone = row.phone;
         user.password = generatePassword();
       } else {

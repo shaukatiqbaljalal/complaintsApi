@@ -4,15 +4,17 @@ const router = express.Router();
 const _ = require("lodash");
 
 router.get("/", async (req, res) => {
-  let configuration = await Configuration.findOne();
-  if (!configuration) return res.status(404).send("No configuration object");
-  res.send(configuration);
+  let configuration = await Configuration.find().limit(1);
+  if (!configuration.length)
+    return res.status(404).send("No configuration object");
+  console.log(configuration);
+  return res.send(configuration[0]);
 });
 
 router.post("/", async (req, res) => {
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
-
+  console.log(req.body);
   let configuration = await Configuration.find();
   if (configuration.length > 0)
     return res.status(400).send("Configuration object already exists.");

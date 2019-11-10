@@ -2,42 +2,47 @@ const jwt = require("jsonwebtoken");
 const config = require("config");
 const Joi = require("joi");
 const mongoose = require("mongoose");
-const complainerSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    minlength: 5,
-    maxlength: 50
-  },
+const complainerSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      minlength: 5,
+      maxlength: 50
+    },
 
-  email: {
-    type: String,
-    required: true,
-    minlength: 5,
-    maxlength: 255,
-    unique: true
-  },
-  phone: {
-    type: String,
-    required: false,
-    minlength: 9,
-    maxlength: 50
-  },
+    email: {
+      type: String,
+      required: true,
+      minlength: 5,
+      maxlength: 255,
+      unique: true
+    },
+    phone: {
+      type: String,
+      required: false,
+      minlength: 9,
+      maxlength: 50
+    },
 
-  password: {
-    type: String,
-    required: true,
-    minlength: 8,
-    maxlength: 1024
+    password: {
+      type: String,
+      required: true,
+      minlength: 8,
+      maxlength: 1024
+    },
+    profilePath: {
+      type: String,
+      required: false,
+      minlength: 5,
+      maxlength: 1024
+    },
+    profilePicture: { type: Buffer }
   },
-  profilePath: {
-    type: String,
-    required: false,
-    minlength: 5,
-    maxlength: 1024
-  },
-  profilePicture: { type: Buffer }
-});
+  {
+    timestamps: true
+  }
+);
 
 complainerSchema.methods.generateAuthToken = function() {
   const token = jwt.sign(

@@ -1,4 +1,5 @@
 const encrypt = require("./../common/encrypt");
+const capitalizeFirstLetter = require("./../common/helper");
 
 const { Admin, validate } = require("../models/admin");
 const passwordGenrator = require("./../middleware/passwordGenerator");
@@ -67,12 +68,12 @@ router.post(
     const { error } = validate(req.body);
     if (error) return res.status(400).send(error.details[0].message);
 
-    let admin = await Admin.findOne({ email: req.body.email });
+    let admin = await Admin.findOne({ email: req.body.email.toLowerCase() });
     if (admin) return res.status(400).send("User already registered.");
 
     admin = new Admin({
-      name: req.body.name,
-      email: req.body.email,
+      name: capitalizeFirstLetter(req.body.name),
+      email: req.body.email.toLowerCase(),
       password: req.body.password,
       phone: req.body.phone
     });
@@ -107,8 +108,8 @@ router.put("/:id", upload.single("profilePicture"), async (req, res) => {
   console.log("req body", req.body);
   const profilePath = req.file ? req.file.path : req.body.profilePath;
   const updatedUser = {
-    name: req.body.name,
-    email: req.body.email,
+    name: capitalizeFirstLetter(req.body.name),
+    email: req.body.email.toLowerCase(),
     phone: req.body.phone,
     profilePath: profilePath,
     profilePicture: admin.profilePicture

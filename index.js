@@ -37,13 +37,13 @@ if (!config.get("jwtPrivateKey")) {
 console.log(config.get("jwtPrivateKey"));
 // connection to MongoDB
 // ---------------------//
+
+const uri = config.get("dbUri");
 mongoose
-  .connect("mongodb://localhost/QuickResponse")
+  .connect(uri)
   .then(() => {
     console.log("Connected to MongoDB...");
-
     const port = process.env.PORT || 5000;
-
     const server = app.listen(port, () =>
       console.log(`Listening on port ${port}...`)
     );
