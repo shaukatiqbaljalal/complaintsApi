@@ -3,20 +3,23 @@ const express = require("express");
 const router = express.Router();
 const _ = require("lodash");
 
-router.get("/", async (req, res) => {
-  let configuration = await Configuration.find().limit(1);
-  if (!configuration.length)
-    return res.status(404).send("No configuration object");
+router.get("/:id", async (req, res) => {
+  let configuration = await Configuration.findById(req.params.id);
+  if (!configuration) return res.status(404).send("No configuration object");
   console.log(configuration);
-  return res.send(configuration[0]);
+  return res.send(configuration);
 });
 
 router.post("/", async (req, res) => {
+  //company id is required
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
   console.log(req.body);
-  let configuration = await Configuration.find();
-  if (configuration.length > 0)
+  let configuration = await Configuration.findOne({
+    companyId: req.body.companyId
+  });
+
+  if (configuration > 0)
     return res.status(400).send("Configuration object already exists.");
 
   configuration = new Configuration(req.body);

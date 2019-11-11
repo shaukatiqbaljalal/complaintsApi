@@ -85,6 +85,11 @@ const Complaint = mongoose.model(
       type: String,
       enum: ["High", "Medium", "Low"],
       default: "Medium"
+    },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true
     }
   })
 );
@@ -101,6 +106,7 @@ function validateComplaint(complaint) {
       .max(255),
     category: Joi.ObjectId().required(),
     assignedTo: Joi.ObjectId(),
+    companyId: Joi.ObjectId().required(),
 
     location: Joi.string().max(255),
     spam: Joi.boolean(),

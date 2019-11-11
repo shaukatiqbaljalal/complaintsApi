@@ -4,7 +4,7 @@ const path = require("path");
 const { Complaint, validate } = require("../models/complaint");
 const { Category } = require("../models/category");
 const { Assignee } = require("../models/assignee");
-const { Configuration } = require("../models/configuration");
+// const { Configuration } = require("../models/configuration");
 const { Complainer } = require("../models/complainer");
 const { Admin } = require("../models/admin");
 const checkSeverity = require("../utils/severity");
@@ -15,7 +15,7 @@ const multer = require("multer");
 const router = express.Router();
 const { AttachmentType } = require("../models/attachment");
 const capitalizeFirstLetter = require("./../common/helper");
-
+const authUser = require("./../middleware/authUser");
 const _ = require("lodash");
 
 // multer storage
@@ -73,19 +73,23 @@ router.get("/", authComplainer, async (req, res) => {
 // complainer can make complaint -- Complainer
 router.post(
   "/",
-  authComplainer,
   upload.single("complaint"),
+  authComplainer,
   async (req, res) => {
     console.log(req.body);
+    if (!req.body.companyId) req.body.companyId = req.complainer.companyId;
     // const { error } = validate(req.body);
     // if (error) return res.status(400).send(error.details[0].message);
 
     // Validate the attached file is allowed
     if (req.file) {
-      let attachments = await AttachmentType.find().select(
-        "extentionName maxSize"
-      );
+      let attachments = await AttachmentType.find({
+        companyId: req.body.companyId
+      }).select("extentionName maxSize");
+
       let ext = req.file.mimetype.split("/")[1].toLowerCase();
+      if (!attachments.length)
+        return res.status(400).send("Attachment is not allowed");
       let type = attachments.find(a => a.extentionName === ext);
       if (!type)
         return res.status(400).send("The attached file is not allowed");
@@ -94,7 +98,10 @@ router.post(
           .status(400)
           .send("The attached file is larger than allowed size.");
     }
-    const configToken = await Configuration.find().limit(1);
+    // const configToken = await Configuration.findOne({
+    //   companyId:req.body.companyId
+    // });
+    // if(configToken&&configToken.isSeverity)
     let severity;
     if (!req.body.severity) {
       severity = checkSeverity(req.body.details);
@@ -125,7 +132,9 @@ router.post(
     let adminAssignee = null;
     let assignee;
     if (assignees.length < 1) {
-      adminAssignee = await Admin.findOne().limit(1);
+      adminAssignee = await Admin.findOne({
+        companyId: req.body.companyId
+      });
     } else {
       let countArr = [];
       for (let index = 0; index < assignees.length; index++) {
@@ -161,7 +170,8 @@ router.post(
       title: title,
       location: req.body.location,
       severity: severity,
-      files: req.file ? req.file.filename : ""
+      files: req.file ? req.file.filename : "",
+      companyId: req.body.companyId
     });
 
     await complaint.save();
@@ -213,7 +223,7 @@ router.get("/download/image/:id", async (req, res, next) => {
     if (!complaint) {
       return res.status(404).send("The complaint with given ID was not found.");
     } else if (!complaint.files) {
-      return res.status(404).send("Not image found with this Complaint.");
+      return res.status(404).send("Not file found with this Complaint.");
     }
 
     const fileExtension = complaint.files.split(".")[1];
@@ -235,7 +245,7 @@ router.get("/download/image/:id", async (req, res, next) => {
       res.send(data);
     });
   } catch (e) {
-    res.status(404).send("Could not find image.");
+    res.status(500).send("Some error occured while fetching file", e);
   }
 });
 
@@ -246,7 +256,7 @@ router.get("/view/image/:id", async (req, res, next) => {
     if (!complaint) {
       return res.status(404).send("The complaint with given ID was not found.");
     } else if (!complaint.files) {
-      return res.status(404).send("Not image found with this Complaint.");
+      return res.status(404).send("Not file found with this Complaint.");
     }
 
     const filePath = path.join(
@@ -255,9 +265,9 @@ router.get("/view/image/:id", async (req, res, next) => {
       "complaints",
       complaint.files
     );
+
     fs.readFile(filePath, (err, data) => {
       if (err) return next(err);
-
       res.setHeader(
         "Content-Type",
         mime.getType(complaint.files.split(".")[1])
@@ -269,7 +279,7 @@ router.get("/view/image/:id", async (req, res, next) => {
       res.send(data);
     });
   } catch (e) {
-    res.status(404).send("Could not find image.");
+    res.status(404).send("Could not find file.");
   }
 });
 
@@ -289,17 +299,23 @@ router.put("/feedback/:id", authComplainer, async (req, res) => {
   } else {
     complaint.feedbackTags = "satisfied";
   }
+  try {
+    await complaint.save();
 
-  await complaint.save();
-
-  io.getIO().emit("complaints", { action: "feedback", complaint: complaint });
-  console.log("feedback given complaint - assignee");
-  res.send(complaint);
+    io.getIO().emit("complaints", { action: "feedback", complaint: complaint });
+    console.log("feedback given complaint - assignee");
+    res.send(complaint);
+  } catch (error) {
+    res.status(404).send("Could not find file.");
+  }
 });
 
 // getting all spam complaints for charts and graphs
-router.get("/get/all/spam", async (req, res) => {
-  const complaints = await Complaint.find({ spam: true }).select("timeStamp");
+router.get("/get/all/spam", authUser, async (req, res) => {
+  const complaints = await Complaint.find({
+    spam: true,
+    companyId: req.user.companyId
+  }).select("timeStamp");
   if (!complaints)
     return res
       .status(404)
@@ -309,10 +325,11 @@ router.get("/get/all/spam", async (req, res) => {
 });
 
 // getting all progress complaints for charts and graphs
-router.get("/get/all/progress", async (req, res) => {
-  const complaints = await Complaint.find({ status: "in-progress" }).select(
-    "timeStamp"
-  );
+router.get("/get/all/progress", authUser, async (req, res) => {
+  const complaints = await Complaint.find({
+    status: "in-progress",
+    companyId: req.user.companyId
+  }).select("timeStamp");
   if (!complaints)
     return res
       .status(404)
@@ -339,9 +356,6 @@ router.get("/:id", async (req, res) => {
   const complaint = await Complaint.findOne({
     _id: req.params.id
   })
-    .select(
-      "_id title status location spam details files remarks timeStamp feedbackRemarks feedbackTags"
-    )
     .populate("complainer", "name _id")
     .populate("assignedTo", "name _id")
     .populate("category", "name _id");

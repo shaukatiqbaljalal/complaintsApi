@@ -8,19 +8,24 @@ const passwordGenrator = require("./../middleware/passwordGenerator");
 const { getReportsEmailOptions } = require("../common/sendEmail");
 const sendEmail = require("../common/sendEmail");
 const path = require("path");
-router.get("/", async (req, res) => {
-  let members = await Authority.find().select("name email designation ");
+const authUser = require("./../middleware/authUser");
+
+router.get("/", authUser, async (req, res) => {
+  let members = await Authority.find({ companyId: req.user.companyId }).select(
+    "name email designation "
+  );
   if (!members) res.status(404).send("No member");
   res.send(members);
 });
 
-router.post("/sendreports/members", async (req, res) => {
+router.post("/sendreports/members", authUser, async (req, res) => {
   let recieversList = JSON.parse(req.body.recievers);
   console.log(recieversList);
   console.log(req.body.reportName);
   const filePath = path.join("public", "files", "reports", req.body.reportName);
   for (let index = 0; index < recieversList.length; index++) {
     const reciever = recieversList[index];
+
     const options = getReportsEmailOptions(
       reciever.email,
       "Complaints Summary",
@@ -32,23 +37,33 @@ router.post("/sendreports/members", async (req, res) => {
   deleteFile(filePath);
 });
 
-router.post("/", passwordGenrator, async (req, res) => {
+router.post("/", authUser, passwordGenrator, async (req, res) => {
+  if (!req.body.companyId) req.body.companyId = req.user.companyId;
+
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
 
-  let member = await Authority.findOne({ email: req.body.email });
+  let member = await Authority.findOne({
+    email: req.body.email,
+    companyId: req.user.companyId
+  });
   if (member) return res.status(400).send("User already registered.");
 
   member = new Authority({
     name: req.body.name,
     email: req.body.email,
     password: req.body.password,
-    designation: req.body.designation
+    designation: req.body.designation,
+    companyId: req.user.companyId
   });
-  member.password = encrypt(member.password);
 
-  await member.save();
-  res.send(_.pick(member, ["_id", "name", "email", "designation"]));
+  member.password = encrypt(member.password);
+  try {
+    await member.save();
+    res.send(_.pick(member, ["_id", "name", "email", "designation"]));
+  } catch (error) {
+    res.status(500).send("Some error occurred", error);
+  }
 });
 
 router.put("/:id", async (req, res) => {
@@ -59,7 +74,10 @@ router.put("/:id", async (req, res) => {
         .status(404)
         .send("The member with the given ID was not found.");
     if (req.body.email && member.email != req.body.email) {
-      let mem = await Authority.findOne({ email: req.body.email });
+      let mem = await Authority.findOne({
+        email: req.body.email,
+        companyId: member.companyId
+      });
       if (mem) {
         return res.status(400).send("Given Email Already Exists");
       }

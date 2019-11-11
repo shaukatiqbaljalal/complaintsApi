@@ -1,36 +1,43 @@
 const { AttachmentType, validate } = require("../models/attachment");
 const express = require("express");
 const router = express.Router();
+const authUser = require("./../middleware/authUser");
 const _ = require("lodash");
 
-router.get("/", async (req, res) => {
-  let attachments = await AttachmentType.find().select("extentionName maxSize");
+router.get("/", authUser, async (req, res) => {
+  let attachments = await AttachmentType.find({
+    companyId: req.user.companyId
+  }).select("extentionName maxSize");
   if (!attachments) return res.status(404).send("No Attachment");
   res.send(attachments);
 });
 
 router.post("/", async (req, res) => {
+  if (!req.body.companyId) req.body.companyId = req.user.companyId;
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
   let exeName = req.body.extentionName.trim();
   if (exeName[0] == ".") {
     exeName = exeName.split(".")[1];
   }
-  let attachment = await AttachmentType.findOne({
-    extentionName: exeName
-  });
-  if (attachment) return res.status(400).send("Attachment already registered.");
+  try {
+    let attachment = await AttachmentType.findOne({
+      extentionName: exeName,
+      companyId: req.body.companyId
+    });
+    if (attachment)
+      return res.status(400).send("Attachment already registered.");
+    req.body.extentionName = exeName;
+    attachment = new AttachmentType(req.body);
 
-  attachment = new AttachmentType({
-    extentionName: exeName,
-    maxSize: req.body.maxSize
-  });
-
-  await attachment.save();
-  res.send(_.pick(attachment, ["_id", "extentionName", "maxSize"]));
+    await attachment.save();
+    res.send(_.pick(attachment, ["_id", "extentionName", "maxSize"]));
+  } catch (error) {
+    return res.status(500).send("Could not add attachment", error);
+  }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", authUser, async (req, res) => {
   try {
     let attachment = await AttachmentType.findById(req.params.id);
     if (!attachment)
@@ -41,10 +48,11 @@ router.put("/:id", async (req, res) => {
       req.body.extentionName &&
       attachment.extentionName != req.body.extentionName
     ) {
-      let mem = await AttachmentType.findOne({
-        extentionName: req.body.extentionName
+      let attach = await AttachmentType.findOne({
+        extentionName: req.body.extentionName,
+        companyId: attachment.companyId
       });
-      if (mem) {
+      if (attach) {
         return res.status(400).send("Given Attachment Already Exists");
       }
     }
@@ -58,7 +66,7 @@ router.put("/:id", async (req, res) => {
 
     res.send(_.pick(attachment, ["_id", "extentionName", "maxSize"]));
   } catch (error) {
-    console.log(error);
+    return res.status(500).send("Some error occured while updating", error);
   }
 });
 router.delete("/:id", async (req, res) => {

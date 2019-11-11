@@ -17,6 +17,7 @@ const Message = mongoose.model(
       type: mongoose.Schema.Types.ObjectId,
       required: true
     },
+
     createdAt: {
       type: Date,
       default: Date.now()
@@ -32,6 +33,8 @@ function validateMessage(message) {
     messageBody: Joi.string()
       .min(1)
       .required()
+    // companyId: Joi.ObjectId().required()
+
     // sender: Joi.ObjectId().required(),
     // receiver: Joi.ObjectId().required()
   };

@@ -1,7 +1,7 @@
 const { Category, validate } = require("../models/category");
 const { Assignee } = require("../models/assignee");
 const { categorySelection } = require("../utils/categorySelection");
-const { capitalizeFirstLetter } = require("./../common/helper");
+const authUser = require("./../middleware/authUser");
 
 const authAssignee = require("../middleware/authAssignee");
 const express = require("express");
@@ -29,8 +29,8 @@ router.get("/assignee/:id", authAssignee, async (req, res) => {
   res.status(200).send(categories);
 });
 
-router.get("/all", async (req, res) => {
-  const categories = await Category.find();
+router.get("/all", authAssignee, async (req, res) => {
+  const categories = await Category.find({ companyId: req.assignee.companyId });
   res.send(categories);
 });
 
@@ -66,19 +66,23 @@ router.get("/specific/parent/:id", async (req, res) => {
 });
 
 // getting root categories
-router.get("/specific/noparent", async (req, res) => {
-  const categories = await Category.find({ parentCategory: { $eq: null } });
+router.get("/specific/noparent", authUser, async (req, res) => {
+  const categories = await Category.find({
+    parentCategory: { $eq: null },
+    companyId: req.user.companyId
+  });
   if (!categories) return res.status(404).send("No Categories found.");
   res.send(categories);
 });
 
 // getting parent category
 router.get("/find/parent/category/:id", async (req, res) => {
-  const categories = await Category.findOne({ _id: req.params.id });
+  const category = await Category.findOne({ _id: req.params.id });
 
-  if (!categories) return res.status(404).send("No Category found");
+  if (!category)
+    return res.status(404).send("Category with given id not found");
 
-  res.send(categories);
+  res.send(category);
 });
 
 //categories' siblings
@@ -86,7 +90,8 @@ router.get("/siblingsOf/:id", async (req, res) => {
   const category = await Category.findById(req.params.id);
   if (!category) return res.status(404).send("No such category found");
   const siblings = await Category.find({
-    parentCategory: category.parentCategory
+    parentCategory: category.parentCategory,
+    companyId: category.companyId
   });
 
   res.send(siblings);
@@ -100,10 +105,6 @@ async function childsOf(id) {
 async function _findCategoryById(id) {
   let category = await Category.findById(id);
   return category;
-}
-
-async function _findAndUpdateById(id, body, option = false) {
-  return await Category.findByIdAndUpdate(id, body, { new: option });
 }
 
 async function toggleHasChild(id) {
@@ -120,10 +121,19 @@ async function toggleHasChild(id) {
 }
 
 // creating categories
-router.post("/", async (req, res) => {
+router.post("/", authUser, async (req, res) => {
+  req.body.companyId = req.user.companyId;
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
-  if (req.body.parentCategory == "5d90d9c4ea49f82cb84d112f") {
+
+  //Front end pay implementation is tarah ki hai k drop and down walay part main jab main root categories ka
+  //sibling banata hun tou parent id null hoti hai q k root cats ka koi parent ni
+  //tou database main hamesha aik root category rahay gi jis ki id compare ki jae
+  //if it is equal then make the category root of company of req.user.companyId
+
+  let rootCategory = await Category.findOne({ name: "root" });
+
+  if (req.body.parentCategory && req.body.parentCategory == rootCategory._id) {
     console.log("Ids equal");
     req.body.parentCategory = null;
   }
@@ -135,6 +145,8 @@ router.post("/", async (req, res) => {
     parentCategory = await _findCategoryById(req.body.parentCategory);
     if (!parentCategory)
       return res.status(400).send("No such parent Category found.");
+    if (parentCategory.name === req.body.name)
+      return res.status(400).send("Child can not have same name as parent");
 
     //validate no same categories in certain branch of categories tree
     if (parentCategory.hasChild) {
@@ -146,7 +158,8 @@ router.post("/", async (req, res) => {
   } else {
     let category = await Category.findOne({
       parentCategory: null,
-      name: req.body.name
+      name: req.body.name,
+      companyId: req.body.companyId
     });
     if (category) return res.status(400).send("Category Already Exists");
   }
@@ -166,9 +179,6 @@ router.post("/", async (req, res) => {
     res.status(400).send(error);
   }
 });
-async function categoryExists(id) {
-  return await _findCategoryById(id);
-}
 
 async function isUnique(name, parentCategory) {
   let siblingsList = null;
@@ -181,7 +191,7 @@ async function isUnique(name, parentCategory) {
   return true;
 }
 
-router.post("/bulk", async (req, res) => {
+router.post("/bulk", authUser, async (req, res) => {
   let categories = req.body.categories;
   if (categories.length < 0)
     return res.status(400).send("No categories in the body");
@@ -190,10 +200,10 @@ router.post("/bulk", async (req, res) => {
   let index = categories.findIndex(c => c.name === "General");
   if (index >= 0) categories.splice(index, 1);
   //if there is no category in DB
-  let categoriesInDb = await Category.find();
+  let categoriesInDb = await Category.find({ companyId: req.user.companyId });
   let generaIndex = categoriesInDb.findIndex(c => c.name === "General");
 
-  if (categoriesInDb.length > 0 && generaIndex >= 0) {
+  if (categoriesInDb.length > 0 && !generaIndex) {
     categories.push({
       id: categories.length + 1,
       name: "General",
@@ -210,6 +220,7 @@ router.post("/bulk", async (req, res) => {
       ).newId;
       category.parentCategory = newParentCategory;
     }
+    if (!category.companyId) category.companyId = req.user.companyId;
     let persistentCategory = new Category(category);
     ids.push({ oldId: oldId, newId: persistentCategory._id });
     docs.push(persistentCategory);
@@ -225,12 +236,14 @@ router.post("/bulk", async (req, res) => {
   });
 });
 
-router.put("/updatebulk", async (req, res) => {
+router.put("/updatebulk", authUser, async (req, res) => {
   let errors = [];
   if (!req.body.categories) return res.status(400).send("No category provided");
   let { categories } = req.body;
   console.log(categories);
   categories.forEach(async category => {
+    if (!category.companyId) category.companyId = req.user.companyId;
+
     let id = category._id;
     delete category._id;
     try {
@@ -249,6 +262,7 @@ router.put("/updatebulk", async (req, res) => {
 });
 
 router.put("/:id", async (req, res) => {
+  if (!req.body.companyId) req.body.companyId = req.user.companyId;
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
   //find category
@@ -306,10 +320,13 @@ router.put("/:id", async (req, res) => {
 });
 
 // for sentiment analysis
-router.post("/sentiment/selection", async (req, res) => {
+router.post("/sentiment/selection", authUser, async (req, res) => {
   console.log(req.body);
   const cat = categorySelection(req.body.details);
-  const category = await Category.findOne({ name: cat });
+  const category = await Category.findOne({
+    name: cat,
+    companyId: req.user.companyId
+  });
 
   if (!category) {
     return res.status(404).send("No Category found");
@@ -319,16 +336,17 @@ router.post("/sentiment/selection", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   const category = await Category.findById(req.params.id);
+  if (!category) return res.status(400).send("Category Not found");
   if (!category.hasChild) {
     //make has child false of the parent of deleting catg if no child left
     if (category.parentCategory) {
       let childs = await childsOf(category.parentCategory);
-      if (childs.length <= 1) {
+      if (childs.length === 1) {
         await toggleHasChild(category.parentCategory);
       }
     }
     try {
-      await category.remove();
+      await Category.findOneAndRemove({ _id: req.params.id });
       return res.send(category);
     } catch (error) {
       return res.send(error);

@@ -6,6 +6,12 @@ const configurationSchema = new mongoose.Schema({
     type: Boolean,
     required: true
   },
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Company",
+    required: true,
+    unique: true
+  },
   isMessaging: {
     type: Boolean,
     required: true
@@ -22,7 +28,8 @@ function validateConfigurationObject(configuration) {
   const schema = {
     isAccountCreation: Joi.boolean().required(),
     isMessaging: Joi.boolean().required(),
-    isSeverity: Joi.boolean().required()
+    isSeverity: Joi.boolean().required(),
+    companyId: Joi.ObjectId().required()
   };
 
   return Joi.validate(configuration, schema);

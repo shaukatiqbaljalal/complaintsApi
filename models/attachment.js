@@ -6,14 +6,18 @@ const attachmentSchema = new mongoose.Schema({
     type: String,
     required: true,
     minlength: 2,
-    maxlength: 10,
-    unique: true
+    maxlength: 10
   },
   maxSize: {
     type: String,
     required: true,
     minlength: 1,
     maxlength: 255
+  },
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Company",
+    required: true
   }
 });
 
@@ -28,7 +32,8 @@ function validateAttachmentType(attachment) {
     maxSize: Joi.string()
       .min(1)
       .max(255)
-      .required()
+      .required(),
+    companyId: Joi.ObjectId().required()
   };
 
   return Joi.validate(attachment, schema);

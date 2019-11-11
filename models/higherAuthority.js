@@ -12,8 +12,7 @@ const authoritySchema = new mongoose.Schema({
     type: String,
     required: true,
     minlength: 5,
-    maxlength: 255,
-    unique: true
+    maxlength: 255
   },
   password: {
     type: String,
@@ -23,6 +22,11 @@ const authoritySchema = new mongoose.Schema({
   },
   designation: {
     type: String,
+    required: true
+  },
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Company",
     required: true
   }
 });
@@ -44,7 +48,8 @@ function validateAuthority(authority) {
       .min(5)
       .max(255)
       .required(),
-    designation: Joi.string().required()
+    designation: Joi.string().required(),
+    companyId: Joi.ObjectId().required()
   };
 
   return Joi.validate(authority, schema);

@@ -32,22 +32,26 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
     return res.status(400).send("complaint is already closed");
   }
   console.log("after");
-  const admin = await Admin.findOne().limit(1);
+  const admin = await Admin.findOne({
+    companyId: req.assignee.companyId
+  });
 
   complaint.assignedTo = {
     _id: admin._id
   };
   complaint.assigned = false;
 
-  await complaint.save();
-
-  io.getIO().emit("complaints", {
-    action: "drop",
-    complaint: complaint
-  });
-  console.log("drop complaint - assignee");
-
-  res.status(200).send("You have successfully dropped responsibility");
+  try {
+    await complaint.save();
+    io.getIO().emit("complaints", {
+      action: "drop",
+      complaint: complaint
+    });
+    console.log("dropped complaint - assignee");
+    res.status(200).send("You have successfully dropped responsibility");
+  } catch (error) {
+    res.status(500).send("Some error occured", error);
+  }
 });
 
 // marking complaint as spam
@@ -62,9 +66,12 @@ router.put("/:spam/:id", authAssignee, async (req, res) => {
   complaint.status = "closed - relief can't be granted";
   complaint.spamBy = req.assignee._id;
   console.log(complaint.spamBy);
-
-  await complaint.save();
-  res.status(200).send("Complaint is marked as spam successfully");
+  try {
+    await complaint.save();
+    res.status(200).send("Complaint is marked as spam successfully");
+  } catch (error) {
+    res.status(500).send("Some error occured", error);
+  }
 });
 
 // remove complaint as spam
@@ -77,19 +84,20 @@ router.put("/remove/spam/:id", authAssignee, async (req, res) => {
 
   complaint.status = "in-progress";
   complaint.spamBy = null;
-
-  await complaint.save();
-  res.status(200).send("Complaint is removed as spam successfully");
+  try {
+    await complaint.save();
+    res.status(200).send("Complaint is removed as spam successfully");
+  } catch (error) {
+    res.status(500).send("Some error occured", error);
+  }
 });
 
 // getting all spam complaints
 router.get("/assignee/spam/complaints", authAssignee, async (req, res) => {
   const complaints = await Complaint.find({ spamBy: req.assignee._id })
     .select("_id title status")
-
     .populate("category", "name _id");
   if (!complaints) return res.status(404).send("No Spam list found.");
-
   res.send(complaints);
 });
 
@@ -100,16 +108,19 @@ router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
 
   complaint.status = req.params.status;
   complaint.remarks = req.params.remarks;
+  try {
+    await complaint.save();
 
-  await complaint.save();
+    io.getIO().emit("complaints", {
+      action: "status changed",
+      complaint: complaint
+    });
+    console.log("status changed - assignee");
 
-  io.getIO().emit("complaints", {
-    action: "status changed",
-    complaint: complaint
-  });
-  console.log("status changed - assignee");
-
-  res.status(200).send(complaint);
+    res.status(200).send(complaint);
+  } catch (error) {
+    res.status(500).send("Some error occured", error);
+  }
 });
 
 // Assignee can get any complaint by ID -- Assignee

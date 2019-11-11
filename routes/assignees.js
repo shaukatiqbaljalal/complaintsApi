@@ -13,7 +13,6 @@ const multer = require("multer");
 const encrypt = require("./../common/encrypt");
 const sendEmail = require("../common/sendEmail");
 const { getEmailOptions } = require("../common/sendEmail");
-const capitalizeFirstLetter = require("./../common/helper");
 const authUser = require("./../middleware/authUser");
 
 // multer storageor

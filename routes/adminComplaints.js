@@ -1,5 +1,4 @@
 const { Complaint } = require("../models/complaint");
-const { Assignee } = require("../models/assignee");
 const authAdmin = require("../middleware/authAdmin");
 const io = require("../socket");
 const express = require("express");
@@ -11,7 +10,7 @@ const path = require("path");
 
 // Getting complaints of Admin -- Admin
 router.get("/", authAdmin, async (req, res) => {
-  const complaints = await Complaint.find()
+  const complaints = await Complaint.find({ companyId: req.admin.companyId })
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
@@ -34,9 +33,6 @@ router.get("/:id", authAdmin, async (req, res) => {
   //   return res.status(400).send("The id is not valid.");
   // }
   const complaint = await Complaint.findOne({ _id: req.params.id })
-    .select(
-      "_id title status location assigned spam details files remarks timeStamp feedbackRemarks feedbackTags"
-    )
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
@@ -48,9 +44,11 @@ router.get("/:id", authAdmin, async (req, res) => {
   res.send(complaint);
 });
 
-router.get("/generateReport/pdf/:from/:to", async (req, res) => {
+router.get("/generateReport/pdf/:from/:to", authAdmin, async (req, res) => {
   try {
-    const allComplaints = await Complaint.find();
+    const allComplaints = await Complaint.find({
+      companyId: req.admin.companyId
+    });
 
     console.log(allComplaints);
     let from = new Date(req.params.from);
@@ -147,16 +145,19 @@ router.put(
 
     complaint.assigned = true;
     complaint.assignedTo = { _id: req.params.assigneeId };
+    try {
+      await complaint.save();
 
-    await complaint.save();
+      io.getIO().emit("complaints", {
+        action: "task assigned",
+        complaint: complaint
+      });
+      console.log("Task Assigned - admin");
 
-    io.getIO().emit("complaints", {
-      action: "task assigned",
-      complaint: complaint
-    });
-    console.log("Task Assigned - admin");
-
-    res.status(200).send(complaint);
+      res.status(200).send(complaint);
+    } catch (error) {
+      res.status(500).send("Error occured", error);
+    }
   }
 );
 

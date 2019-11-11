@@ -15,6 +15,11 @@ const Category = mongoose.model(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category"
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true
+    },
     hasChild: {
       type: Boolean
     }
@@ -27,7 +32,8 @@ function validateCategory(category) {
       .min(4)
       .required(),
     parentCategory: Joi.ObjectId(),
-    hasChild: Joi.boolean()
+    hasChild: Joi.boolean(),
+    companyId: Joi.ObjectId().required()
   };
 
   return Joi.validate(category, schema);
