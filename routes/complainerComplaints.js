@@ -153,6 +153,10 @@ router.post(
     if (!complainer) return res.status(400).send("Invalid Complainer.");
 
     const title = capitalizeFirstLetter(req.body.title);
+    const location = {
+      lat: req.body.latitude,
+      lng: req.body.longitude
+    };
 
     let complaint = new Complaint({
       category: {
@@ -165,7 +169,7 @@ router.post(
         _id: assignee ? assignee._id : adminAssignee._id
       },
       assigned: assignee ? true : false,
-      geolocation: req.body.geolocation ? req.body.geolocation : "",
+      geolocation: location ? location : "",
       details: req.body.details,
       title: title,
       location: req.body.location,
@@ -174,37 +178,38 @@ router.post(
       companyId: req.body.companyId
     });
 
-    await complaint.save();
+    try {
+      await complaint.save();
+      io.getIO().emit("complaints", {
+        action: "new complaint",
+        complaint: complaint
+      });
+      console.log("new complaint - complainer");
 
-    io.getIO().emit("complaints", {
-      action: "new complaint",
-      complaint: complaint
-    });
-    console.log("new complaint - complainer");
-
-    res.send(complaint);
-
-    // // <------Assigning complaint to ASSIGNEE afteer specified time------->
-    // const assignee = await Assignee.findOne({
-    //   responsibility: complaint.category
-    // });
-    // if (!assignee)
-    //   return res
-    //     .status(404)
-    //     .send("Invalid Assignee. Assignee with given ID was not found.");
-
-    // setTimeout(async () => {
-    //   complaint = await Complaint.findOneAndUpdate(
-    //     { _id: complaint._id },
-    //     { assigned: true, assignedTo: assignee._id },
-    //     { new: true }
-    //   );
-    //   await complaint.save();
-    //   res.send(complaint);
-    // }, 5000);
+      res.send(complaint);
+    } catch (error) {
+      res.status(500).send("Some error occured while fetching file", e);
+    }
   }
 );
+// // <------Assigning complaint to ASSIGNEE afteer specified time------->
+// const assignee = await Assignee.findOne({
+//   responsibility: complaint.category
+// });
+// if (!assignee)
+//   return res
+//     .status(404)
+//     .send("Invalid Assignee. Assignee with given ID was not found.");
 
+// setTimeout(async () => {
+//   complaint = await Complaint.findOneAndUpdate(
+//     { _id: complaint._id },
+//     { assigned: true, assignedTo: assignee._id },
+//     { new: true }
+//   );
+//   await complaint.save();
+//   res.send(complaint);
+// }, 5000);
 // <-------getting the latest record from database------->
 // let complaint = await Complaint.findOne()
 //   .limit(1)

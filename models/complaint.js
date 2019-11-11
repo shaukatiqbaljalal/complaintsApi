@@ -31,8 +31,8 @@ const Complaint = mongoose.model(
       required: true
     },
     geolocation: {
-      type: { type: String, default: "Point" },
-      coordinates: { type: [Number], default: [0, 0] }
+      lat: { type: String },
+      lng: { type: String }
     },
     location: {
       type: String,
