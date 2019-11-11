@@ -1,6 +1,5 @@
 const Joi = require("joi");
-const bcrypt = require("bcryptjs");
-const mongoose = require("mongoose");
+
 const express = require("express");
 const _ = require("lodash");
 const { Complainer } = require("../models/complainer");
@@ -11,7 +10,10 @@ router.post("/", async (req, res) => {
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
 
-  let complainer = await Complainer.findOne({ email: req.body.email });
+  let complainer = await Complainer.findOne({
+    email: req.body.email,
+    companyId: req.body.companyId
+  });
 
   if (!complainer) return res.status(400).send("Invalid email or password.");
   if (req.body.password !== decrypt(complainer.password))
@@ -35,6 +37,9 @@ function validate(req) {
     password: Joi.string()
       .min(5)
       .max(255)
+      .required(),
+    companyId: Joi.string()
+      .min(20)
       .required()
   };
 

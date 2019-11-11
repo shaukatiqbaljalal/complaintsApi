@@ -1,5 +1,6 @@
 const encrypt = require("./../common/encrypt");
 const capitalizeFirstLetter = require("./../common/helper");
+const authUser = require("./../middleware/authUser");
 
 const { Complainer, validate } = require("../models/complainer");
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
@@ -61,16 +62,16 @@ const upload = multer({
 //     .send(complainers);
 // });
 
-router.get("/all", async (req, res) => {
-  const complainers = await Complainer.find();
+router.get("/all", authUser, async (req, res) => {
+  const complainers = await Complainer.find({ companyId: req.user.companyId });
 
   if (!complainers) return res.status(404).send("There is no complainer.");
 
   res.status(200).send(complainers);
 });
 
-router.get("/count/complainers", async (req, res) => {
-  const complainers = await Complainer.find();
+router.get("/count/complainers", authUser, async (req, res) => {
+  const complainers = await Complainer.find({ companyId: req.user.companyId });
   let months = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   complainers.forEach(complainer => {
     let date = new Date(complainer.createdAt);
@@ -86,12 +87,16 @@ router.get("/:id", async (req, res) => {
   res.status(200).send(complainer);
 });
 
-router.get("/email/:email", async (req, res) => {
-  const complainer = await Complainer.findOne({ email: req.params.email });
+router.get("/email/:email", authUser, async (req, res) => {
+  const complainer = await Complainer.findOne({
+    email: req.params.email,
+    companyId: req.user.companyId
+  });
 
   if (!complainer) return res.status(404).send("There are no complainer.");
   res.send(_.pick(complainer, ["_id", "name", "email", "profilePicture"]));
 });
+
 router.post(
   "/",
   upload.single("profilePicture"),
@@ -100,13 +105,14 @@ router.post(
     const { error } = validate(req.body);
     if (error) return res.status(400).send(error.details[0].message);
     let complainer = await Complainer.findOne({
-      email: req.body.email.toLowerCase()
+      email: req.body.email.toLowerCase(),
+      companyId: req.body.companyId
     });
 
     if (complainer) return res.status(400).send("User already registered.");
 
     complainer = new Complainer(
-      _.pick(req.body, ["name", "email", "password", "phone"])
+      _.pick(req.body, ["name", "email", "password", "phone", "companyId"])
     );
     if (req.file) {
       complainer.set("profilePath", req.file.filename);
@@ -144,6 +150,7 @@ router.post(
 router.post(
   "/uploadCsv",
   upload.single("csvFile"),
+  authUser,
   readCsv,
   async (req, res) => {
     if (req.error) {
@@ -156,6 +163,7 @@ router.post(
     deleteFile(req.file.path);
     for (let index = 0; index < users.length; index++) {
       const user = users[index];
+      user.companyId = req.user.companyId;
       const { error } = validate(user);
       if (error) {
         delete user.password;
@@ -164,16 +172,20 @@ router.post(
         continue;
       }
 
-      let complainer = await Complainer.findOne({ email: user.email });
+      let complainer = await Complainer.findOne({
+        email: user.email,
+        companyId: req.user.companyId
+      });
       if (complainer) {
         delete user.password;
+        delete user.companyId;
         user.message = "User Already exists";
         errors.push(user);
         continue;
       }
 
       complainer = new Complainer(
-        _.pick(user, ["name", "email", "password", "phone"])
+        _.pick(user, ["name", "email", "password", "phone", "companyId"])
       );
 
       complainer.name = capitalizeFirstLetter(complainer.name);
@@ -195,39 +207,43 @@ router.post(
   }
 );
 
-router.put("/:id", upload.single("profilePicture"), async (req, res) => {
-  // const { error } = validate(req.body);
-  // if (error) return res.status(400).send(error.details[0].message);
-  let complainer = await Complainer.findById(req.params.id);
-  if (!complainer)
-    return res
-      .status(404)
-      .send("The complainer with the given ID was not found.");
-  complainer = await Complainer.findOne({
-    email: req.body.email.toLowerCase()
-  });
-  if (complainer && complainer._id != req.params.id)
-    return res.status(400).send("email already registered");
-  const profilePath = req.file ? req.file.path : req.body.profilePath;
-  let profilePicture = complainer.profilePicture;
-  if (req.file) {
-    profilePicture = fs.readFileSync(req.file.path);
+router.put(
+  "/:id",
+  upload.single("profilePicture"),
+  authUser,
+  async (req, res) => {
+    // const { error } = validate(req.body);
+    // if (error) return res.status(400).send(error.details[0].message);
+    let complainer = await Complainer.findById(req.params.id);
+    if (!complainer)
+      return res
+        .status(404)
+        .send("The complainer with the given ID was not found.");
+    if (req.body.email) {
+      complainer = await Complainer.findOne({
+        email: req.body.email.toLowerCase(),
+        companyId: req.user.companyId
+      });
+
+      if (complainer && complainer._id != req.params.id)
+        return res.status(400).send("email already registered");
+    }
+
+    const profilePath = req.file ? req.file.path : req.body.profilePath;
+    let profilePicture = complainer.profilePicture;
+    if (req.file) {
+      profilePicture = fs.readFileSync(req.file.path);
+    }
+    if (!profilePath) profilePicture = null;
+    req.body.profilePath = profilePath;
+    req.body.profilePicture = profilePicture;
+    complainer = await Complainer.findByIdAndUpdate(req.params.id, req.body, {
+      new: true
+    });
+    res.send(complainer);
+    if (req.file) deleteFile(req.file.path);
   }
-  if (!profilePath) profilePicture = null;
-  complainer = await Complainer.findByIdAndUpdate(
-    req.params.id,
-    {
-      name: req.body.name,
-      email: req.body.email.toLowerCase(),
-      phone: req.body.phone,
-      profilePath: profilePath,
-      profilePicture: profilePicture
-    },
-    { new: true }
-  );
-  res.send(complainer);
-  if (req.file) deleteFile(req.file.path);
-});
+);
 
 router.delete("/:id", async (req, res) => {
   const complainer = await Complainer.findByIdAndRemove(req.params.id);

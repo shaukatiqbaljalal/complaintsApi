@@ -14,6 +14,8 @@ const encrypt = require("./../common/encrypt");
 const sendEmail = require("../common/sendEmail");
 const { getEmailOptions } = require("../common/sendEmail");
 const capitalizeFirstLetter = require("./../common/helper");
+const authUser = require("./../middleware/authUser");
+
 // multer storageor
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -59,8 +61,8 @@ const upload = multer({
 //     .send(assignees);
 // });
 
-router.get("/all", async (req, res) => {
-  const assignees = await Assignee.find();
+router.get("/all", authUser, async (req, res) => {
+  const assignees = await Assignee.find({ companyId: req.user.companyId });
 
   if (!assignees) return res.status(404).send("There are no Assignees.");
 
@@ -68,16 +70,22 @@ router.get("/all", async (req, res) => {
 });
 
 //getting assignee based on his/her _id
-router.get("/me/:id", async (req, res) => {
-  const assignees = await Assignee.findOne({ _id: req.params.id });
+router.get("/me/:id", authUser, async (req, res) => {
+  const assignees = await Assignee.findOne({
+    _id: req.params.id,
+    companyId: req.user.companyId
+  });
 
   if (!assignees) return res.status(404).send("There are no Assignees.");
 
   res.status(200).send(assignees);
 });
 
-router.get("/:id", async (req, res) => {
-  const assignee = await Assignee.findOne({ _id: req.params.id });
+router.get("/:id", authUser, async (req, res) => {
+  const assignee = await Assignee.findOne({
+    _id: req.params.id,
+    companyId: req.user.companyId
+  });
 
   if (!assignee)
     return res.status(404).send("There is no Assignee with given Id.");
@@ -85,8 +93,11 @@ router.get("/:id", async (req, res) => {
   res.status(200).send(assignee);
 });
 
-router.get("/email/:email", async (req, res) => {
-  const assignee = await Assignee.findOne({ email: req.params.email });
+router.get("/email/:email", authUser, async (req, res) => {
+  const assignee = await Assignee.findOne({
+    email: req.params.email,
+    companyId: req.user.companyId
+  });
 
   if (!assignee)
     return res.status(404).send("There is no Assignee with given Id.");
@@ -97,22 +108,21 @@ router.get("/email/:email", async (req, res) => {
 router.post(
   "/",
   upload.single("profilePicture"),
+  authUser,
   passwordGenrator,
   async (req, res) => {
-    console.log();
+    req.body.companyId = req.user.companyId;
     const { error } = validate(req.body);
     if (error) return res.status(400).send(error.details[0].message);
 
-    let assignee = await Assignee.findOne({ email: req.body.email });
-    if (assignee) return res.status(400).send("User already registered.");
-
-    assignee = new Assignee({
-      name: capitalizeFirstLetter(req.body.name),
-      email: req.body.email.toLowerCase(),
-      password: req.body.password,
-      phone: req.body.phone,
-      responsibilities: JSON.parse(req.body.responsibilities)
+    let assignee = await Assignee.findOne({
+      email: req.body.email,
+      companyId: req.user.companyId
     });
+    if (assignee) return res.status(400).send("User already registered.");
+    if (req.body.responsibilities)
+      req.body.responsibilities = JSON.parse(req.body.responsibilities);
+    assignee = new Assignee(req.body);
     if (req.file) {
       assignee.set("profilePath", req.file.filename);
       assignee.set("profilePicture", fs.readFileSync(req.file.path));
@@ -122,7 +132,11 @@ router.post(
     // assignee.password = await bcrypt.hash(assignee.password, salt);
 
     assignee.password = encrypt(assignee.password);
-    await assignee.save();
+    try {
+      await assignee.save();
+    } catch (error) {
+      return res.status(500).send("Could not create user");
+    }
     const options = getEmailOptions(
       assignee.email,
       req.get("origin"),
@@ -140,6 +154,7 @@ router.post(
 router.post(
   "/uploadCsv",
   upload.single("csvFile"),
+  authUser,
   readCsv,
   async (req, res) => {
     if (req.error) {
@@ -151,6 +166,7 @@ router.post(
     //create accounts for each entry
     for (let index = 0; index < users.length; index++) {
       const user = users[index];
+      user.companyId = req.user.companyId;
       const tempArray = user.responsibilities;
       const responsibilities = [];
 
@@ -208,10 +224,14 @@ router.post(
       console.log("user after responsibilities", user);
       //validate user object. if error then skip the account creation
       const { error } = validate(user);
-      let assignee = await Assignee.findOne({ email: user.email });
+      let assignee = await Assignee.findOne({
+        email: user.email,
+        companyId: user.companyId
+      });
 
       if (error || assignee) {
         delete user.password;
+        delete user.companyId;
         user.responsibilities = tempArray;
         user.message += assignee
           ? "User Already exists"
@@ -221,7 +241,14 @@ router.post(
       }
 
       assignee = new Assignee(
-        _.pick(user, ["name", "email", "password", "phone", "responsibilities"])
+        _.pick(user, [
+          "name",
+          "email",
+          "password",
+          "phone",
+          "responsibilities",
+          "companyId"
+        ])
       );
 
       const options = getEmailOptions(
@@ -238,6 +265,7 @@ router.post(
         sendEmail(options);
       } catch (error) {
         delete user.password;
+        delete user.companyId;
         user.message = JSON.stringify(error);
         errors.push(user);
         continue;
@@ -248,35 +276,37 @@ router.post(
   }
 );
 
-router.put("/:id", upload.single("profilePicture"), async (req, res) => {
-  // const { error } = validate(req.body);
-  // if (error) return res.status(400).send(error.details[0].message);
-  let assignee = await Assignee.findById(req.params.id);
-  if (!assignee)
-    return res
-      .status(404)
-      .send("The assignee with the given ID was not found.");
-  console.log("req file", req.file);
-  console.log("req body", req.body);
-  const profilePath = req.file ? req.file.path : req.body.profilePath;
-  const updatedUser = {
-    name: capitalizeFirstLetter(req.body.name),
-    email: req.body.email.toLowerCase(),
-    phone: req.body.phone,
-    responsibilities: JSON.parse(req.body.responsibilities),
-    profilePath: profilePath,
-    profilePicture: assignee.profilePicture
-  };
-  if (req.file) {
-    updatedUser.profilePicture = fs.readFileSync(req.file.path);
-  }
+router.put(
+  "/:id",
+  authUser,
+  upload.single("profilePicture"),
+  async (req, res) => {
+    // const { error } = validate(req.body);
+    // if (error) return res.status(400).send(error.details[0].message);
+    let assignee = await Assignee.findById(req.params.id);
+    if (!assignee)
+      return res
+        .status(404)
+        .send("The assignee with the given ID was not found.");
+    console.log("req file", req.file);
+    console.log("req body", req.body);
+    const profilePath = req.file ? req.file.path : req.body.profilePath;
+    if (req.body.responsibilities)
+      req.body.responsibilities = JSON.parse(req.body.responsibilities);
+    req.body.profilePath = profilePath;
+    req.body.profilePicture = assignee.profilePicture;
 
-  assignee = await Assignee.findByIdAndUpdate(req.params.id, updatedUser, {
-    new: true
-  });
-  res.send(assignee);
-  if (req.file) deleteFile(req.file.path);
-});
+    if (req.file) {
+      req.body.profilePicture = fs.readFileSync(req.file.path);
+    }
+
+    assignee = await Assignee.findByIdAndUpdate(req.params.id, req.body, {
+      new: true
+    });
+    res.send(assignee);
+    if (req.file) deleteFile(req.file.path);
+  }
+);
 
 router.put("/change/chatwith/messages/:assigneeId/:id", async (req, res) => {
   const assignee = await Assignee.findOne({ _id: req.params.assigneeId });

@@ -1,19 +1,8 @@
-const { User, validate } = require("../models/user");
-const { Company } = require("../models/company");
+const { Company, validate } = require("../models/company");
 const express = require("express");
-const fs = require("fs");
 const router = express.Router();
-const bcrypt = require("bcryptjs");
 const _ = require("lodash");
-const passwordGenerator = require("./../middleware/passwordGenerator");
-const readCsv = require("./../middleware/readCsv");
-const sendCsvToClient = require("./../common/sendCsv");
-const deleteFile = require("./../common/deleteFile");
-const getCategoryByName = require("./../common/categoriesHelper");
 const multer = require("multer");
-const encrypt = require("./../common/encrypt");
-const sendEmail = require("../common/sendEmail");
-const { getEmailOptions } = require("../common/sendEmail");
 // multer storage
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -48,17 +37,28 @@ const upload = multer({
   fileFilter: multerFilter
 });
 
-router.post("/", async (req, res) => {
+router.get("/:id", async (req, res) => {
   //   const { error } = validate(req.body);
   //   if (error) {
   //     return res.send(error.details[0].message);
   //   }
-  console.log(req.body.id);
-  let company = await Company.findById(req.body.id);
+  let company = await Company.findById(req.params.id);
   if (!company) return res.status(404).send("Company Not Found");
   return res.send(company);
 });
-
+router.post("/", async (req, res) => {
+  const { error } = validate(req.body);
+  if (error) {
+    return res.status(400).send(error.details[0].message);
+  }
+  const company = Company(req.body);
+  try {
+    await company.save();
+    return res.send(company);
+  } catch (error) {
+    return res.status(400).send(error);
+  }
+});
 router.get("/", async (req, res) => {
   let company = await Company.find();
   if (!company) return res.status(404).send("Company Not Found");

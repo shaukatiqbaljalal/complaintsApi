@@ -1,14 +1,14 @@
 const encrypt = require("./../common/encrypt");
 const capitalizeFirstLetter = require("./../common/helper");
-
+const { Company } = require("../models/company");
 const { Admin, validate } = require("../models/admin");
 const passwordGenrator = require("./../middleware/passwordGenerator");
 const fs = require("fs");
 const deleteFile = require("./../common/deleteFile");
+const authUser = require("./../middleware/authUser");
 
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcryptjs");
 const _ = require("lodash");
 
 const sendEmail = require("../common/sendEmail");
@@ -49,16 +49,25 @@ const upload = multer({
 });
 
 router.get("/:id", async (req, res) => {
-  let admin = await Admin.findOne({ _id: req.params.id });
-  if (!admin) return res.status(404).send("User with given id not found.");
-  res.send(admin);
+  try {
+    let admin = await Admin.findOne({ _id: req.params.id });
+    if (!admin) return res.status(404).send("User with given id not found.");
+    res.send(admin);
+  } catch (error) {
+    res.send(error);
+  }
 });
 
 router.get("/email/:email", async (req, res) => {
-  let admin = await Admin.findOne({ email: req.params.email });
+  let admin = await Admin.findOne({
+    email: req.params.email,
+    companyId: req.user.companyId
+  });
   if (!admin) return res.status(404).send("User with given id not found.");
   res.send(_.pick(admin, ["_id", "name", "email", "profilePicture"]));
 });
+
+//body must have companyId to create Admin
 
 router.post(
   "/",
@@ -68,14 +77,22 @@ router.post(
     const { error } = validate(req.body);
     if (error) return res.status(400).send(error.details[0].message);
 
-    let admin = await Admin.findOne({ email: req.body.email.toLowerCase() });
+    let company = await Company.findById(req.body.companyId);
+    if (!company) return res.status(400).send("Company Not exists");
+
+    let admin = await Admin.findOne({
+      email: req.body.email.toLowerCase(),
+      companyId: req.body.companyId
+    });
+
     if (admin) return res.status(400).send("User already registered.");
 
     admin = new Admin({
       name: capitalizeFirstLetter(req.body.name),
       email: req.body.email.toLowerCase(),
       password: req.body.password,
-      phone: req.body.phone
+      phone: req.body.phone,
+      companyId: req.body.companyId
     });
     if (req.file) {
       admin.set("profilePath", req.file.filename);
@@ -107,18 +124,14 @@ router.put("/:id", upload.single("profilePicture"), async (req, res) => {
     return res.status(404).send("The admin with the given ID was not found.");
   console.log("req body", req.body);
   const profilePath = req.file ? req.file.path : req.body.profilePath;
-  const updatedUser = {
-    name: capitalizeFirstLetter(req.body.name),
-    email: req.body.email.toLowerCase(),
-    phone: req.body.phone,
-    profilePath: profilePath,
-    profilePicture: admin.profilePicture
-  };
+
+  req.body.profilePath = profilePath;
+  req.body.profilePicture = admin.profilePicture;
   if (req.file) {
-    updatedUser.profilePicture = fs.readFileSync(req.file.path);
+    req.body.profilePicture = fs.readFileSync(req.file.path);
   }
 
-  admin = await Admin.findByIdAndUpdate(req.params.id, updatedUser, {
+  admin = await Admin.findByIdAndUpdate(req.params.id, req.body, {
     new: true
   });
   res.send(admin);

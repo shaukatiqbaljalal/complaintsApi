@@ -17,8 +17,7 @@ const assigneeSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 5,
-      maxlength: 255,
-      unique: true
+      maxlength: 255
     },
     phone: {
       type: String,
@@ -37,6 +36,11 @@ const assigneeSchema = new mongoose.Schema(
       required: true,
       minlength: 8,
       maxlength: 1024
+    },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true
     },
     profilePath: {
       type: String,
@@ -65,8 +69,9 @@ assigneeSchema.methods.generateAuthToken = function() {
     {
       _id: this._id,
       name: this.name,
-      role: "assignee"
+      role: "assignee",
       // profilePicture: profilePicture
+      companyId: this.companyId
     },
     config.get("jwtPrivateKey")
   );
@@ -91,6 +96,8 @@ function validateAssignee(assignee) {
       .max(50),
 
     responsibilities: Joi.array().items(Joi.object()),
+    companyId: Joi.ObjectId().required(),
+
     password: Joi.string()
       .min(8)
       .max(255)

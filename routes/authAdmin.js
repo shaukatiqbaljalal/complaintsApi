@@ -1,5 +1,6 @@
 const Joi = require("joi");
 const bcrypt = require("bcryptjs");
+const { Company } = require("../models/company");
 const express = require("express");
 const _ = require("lodash");
 const { Admin } = require("../models/admin");
@@ -10,7 +11,10 @@ router.post("/", async (req, res) => {
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
 
-  let admin = await Admin.findOne({ email: req.body.email });
+  let admin = await Admin.findOne({
+    email: req.body.email.toLowerCase(),
+    companyId: req.body.companyId
+  });
   console.log(admin);
   console.log("After Admin");
   if (!admin) return res.status(400).send("Invalid email or password.");
@@ -35,6 +39,9 @@ function validate(req) {
     password: Joi.string()
       .min(5)
       .max(255)
+      .required(),
+    companyId: Joi.string()
+      .min(20)
       .required()
   };
 

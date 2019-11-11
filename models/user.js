@@ -84,8 +84,9 @@ userSchema.methods.generateAuthToken = function() {
       _id: this._id,
       name: this.name,
       role: this.role,
-      companyId: this.companyId
+
       // profilePicture: profilePicture
+      companyId: this.companyId
     },
     config.get("jwtPrivateKey")
   );
@@ -112,6 +113,7 @@ function validateUser(user) {
       .min(9)
       .max(50),
     companyId: Joi.ObjectId().required(),
+
     password: Joi.string()
       .min(8)
       .max(255)

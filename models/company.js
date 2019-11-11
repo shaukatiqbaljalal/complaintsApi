@@ -17,7 +17,8 @@ companySchema.methods.generateAuthToken = function() {
   const token = jwt.sign(
     {
       _id: this._id,
-      name: this.name
+      name: this.name,
+      companyId: this.companyId
     },
     config.get("jwtPrivateKey")
   );
