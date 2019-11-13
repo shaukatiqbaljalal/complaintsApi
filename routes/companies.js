@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const _ = require("lodash");
 const multer = require("multer");
+const fs = require("fs");
 // multer storage
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {

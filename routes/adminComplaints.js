@@ -1,4 +1,6 @@
 const { Complaint } = require("../models/complaint");
+const authUser = require("../middleware/authUser");
+
 const authAdmin = require("../middleware/authAdmin");
 const io = require("../socket");
 const express = require("express");
@@ -44,13 +46,12 @@ router.get("/:id", authAdmin, async (req, res) => {
   res.send(complaint);
 });
 
-router.get("/generateReport/pdf/:from/:to", authAdmin, async (req, res) => {
+router.get("/generateReport/:companyId/:from/:to", async (req, res) => {
   try {
     const allComplaints = await Complaint.find({
-      companyId: req.admin.companyId
+      companyId: req.params.companyId
     });
 
-    console.log(allComplaints);
     let from = new Date(req.params.from);
     let to = new Date(req.params.to);
     let complaints = [];

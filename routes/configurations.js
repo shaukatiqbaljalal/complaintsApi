@@ -4,7 +4,9 @@ const router = express.Router();
 const _ = require("lodash");
 
 router.get("/:id", async (req, res) => {
-  let configuration = await Configuration.findById(req.params.id);
+  let configuration = await Configuration.findOne({
+    companyId: req.params.id
+  });
   if (!configuration) return res.status(404).send("No configuration object");
   console.log(configuration);
   return res.send(configuration);

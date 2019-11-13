@@ -31,9 +31,16 @@ router.get("/assignee/:id", authAssignee, async (req, res) => {
 
 router.get("/all", authAssignee, async (req, res) => {
   const categories = await Category.find({ companyId: req.assignee.companyId });
+  if (!categories.length) return res.status(404).send("Categories not found");
   res.send(categories);
 });
 
+router.get("/root/category", async (req, res) => {
+  const category = await Category.findOne({ name: "root", companyId: null });
+  console.log(category);
+  if (!category) return res.status(404).send("Category named root not found");
+  res.send(category);
+});
 //categories' Childs
 router.get("/childsOf/:id", async (req, res) => {
   const childs = await childsOf(req.params.id);
@@ -131,7 +138,7 @@ router.post("/", authUser, async (req, res) => {
   //tou database main hamesha aik root category rahay gi jis ki id compare ki jae
   //if it is equal then make the category root of company of req.user.companyId
 
-  let rootCategory = await Category.findOne({ name: "root" });
+  let rootCategory = await Category.findOne({ name: "root", companyId: null });
 
   if (req.body.parentCategory && req.body.parentCategory == rootCategory._id) {
     console.log("Ids equal");
@@ -192,6 +199,8 @@ async function isUnique(name, parentCategory) {
 }
 
 router.post("/bulk", authUser, async (req, res) => {
+  console.log(req.body.categories);
+
   let categories = req.body.categories;
   if (categories.length < 0)
     return res.status(400).send("No categories in the body");

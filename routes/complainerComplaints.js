@@ -73,8 +73,8 @@ router.get("/", authComplainer, async (req, res) => {
 // complainer can make complaint -- Complainer
 router.post(
   "/",
-  upload.single("complaint"),
   authComplainer,
+  upload.single("complaint"),
   async (req, res) => {
     console.log(req.body);
     if (!req.body.companyId) req.body.companyId = req.complainer.companyId;
@@ -98,10 +98,7 @@ router.post(
           .status(400)
           .send("The attached file is larger than allowed size.");
     }
-    // const configToken = await Configuration.findOne({
-    //   companyId:req.body.companyId
-    // });
-    // if(configToken&&configToken.isSeverity)
+
     let severity;
     if (!req.body.severity) {
       severity = checkSeverity(req.body.details);
@@ -145,10 +142,13 @@ router.post(
           countArr.push(count);
         });
       }
-      let index = countArr.indexOf(Math.min(...countArr));
-      assignee = assignees[index];
-    }
 
+      let index = countArr.indexOf(Math.min(...countArr));
+      if (index >= 0) assignee = assignees[index];
+      else assignee = assignees[0];
+    }
+    console.log(assignee);
+    // return;
     const complainer = await Complainer.findById(req.complainer._id);
     if (!complainer) return res.status(400).send("Invalid Complainer.");
 
@@ -157,7 +157,7 @@ router.post(
       lat: req.body.latitude,
       lng: req.body.longitude
     };
-
+    console.log(location);
     let complaint = new Complaint({
       category: {
         _id: category._id
@@ -177,7 +177,7 @@ router.post(
       files: req.file ? req.file.filename : "",
       companyId: req.body.companyId
     });
-
+    console.log(complaint);
     try {
       await complaint.save();
       io.getIO().emit("complaints", {

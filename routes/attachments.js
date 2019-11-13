@@ -12,7 +12,7 @@ router.get("/", authUser, async (req, res) => {
   res.send(attachments);
 });
 
-router.post("/", async (req, res) => {
+router.post("/", authUser, async (req, res) => {
   if (!req.body.companyId) req.body.companyId = req.user.companyId;
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
