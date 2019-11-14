@@ -1,3 +1,5 @@
 node_modules
-node_modules/
 public/files/reports
+public/files/complaints
+public/files/messages
+node_modules/

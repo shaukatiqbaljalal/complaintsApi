@@ -18,8 +18,12 @@ router.post("/", async (req, res) => {
   console.log(admin);
   console.log("After Admin");
   if (!admin) return res.status(400).send("Invalid email or password.");
-  if (req.body.password !== decrypt(admin.password))
-    return res.status(400).send("Invalid email or password.");
+  try {
+    if (req.body.password !== decrypt(admin.password))
+      return res.status(400).send("Invalid email or password.");
+  } catch (error) {
+    return res.status(500).send("Some error occured");
+  }
 
   const token = admin.generateAuthToken();
 

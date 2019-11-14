@@ -11,7 +11,7 @@ router.get("/", authAssignee, async (req, res) => {
     assignedTo: req.assignee._id,
     spam: false
   })
-    .populate("assignedTo", "name -_id")
+    .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
 
@@ -110,14 +110,17 @@ router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
   complaint.remarks = req.params.remarks;
   try {
     await complaint.save();
-
+    let newUp = await Complaint.findById(req.params.id)
+      .populate("assignedTo", "name _id")
+      .populate("complainer", "name _id")
+      .populate("category", "name _id");
     io.getIO().emit("complaints", {
       action: "status changed",
-      complaint: complaint
+      complaint: newUp
     });
     console.log("status changed - assignee");
 
-    res.status(200).send(complaint);
+    res.status(200).send(newUp);
   } catch (error) {
     res.status(500).send("Some error occured", error);
   }

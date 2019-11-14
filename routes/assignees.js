@@ -289,6 +289,14 @@ router.put(
         .send("The assignee with the given ID was not found.");
     console.log("req file", req.file);
     console.log("req body", req.body);
+    if (req.body.email) {
+      let alreadyRegistered = await Assignee.findOne({
+        email: req.body.email.toLowerCase(),
+        companyId: req.user.companyId
+      });
+      if (alreadyRegistered && alreadyRegistered._id != req.params.id)
+        return res.status(400).send("email already registered");
+    }
     const profilePath = req.file ? req.file.path : req.body.profilePath;
     if (req.body.responsibilities)
       req.body.responsibilities = JSON.parse(req.body.responsibilities);
@@ -298,7 +306,7 @@ router.put(
     if (req.file) {
       req.body.profilePicture = fs.readFileSync(req.file.path);
     }
-
+    req.body.password = assignee.password;
     assignee = await Assignee.findByIdAndUpdate(req.params.id, req.body, {
       new: true
     });

@@ -30,11 +30,11 @@ router.get("/", authAdmin, async (req, res) => {
 });
 
 // Admin can get any complaint by ID -- Admin
-router.get("/:id", authAdmin, async (req, res) => {
+router.get("/:id", authUser, async (req, res) => {
   // if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
   //   return res.status(400).send("The id is not valid.");
   // }
-  const complaint = await Complaint.findOne({ _id: req.params.id })
+  const complaint = await Complaint.findById(req.params.id)
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
@@ -148,14 +148,18 @@ router.put(
     complaint.assignedTo = { _id: req.params.assigneeId };
     try {
       await complaint.save();
+      const upcmp = await Complaint.findById(req.params.complaintId)
+        .populate("assignedTo", "name _id")
+        .populate("complainer", "name _id")
+        .populate("category", "name _id");
 
       io.getIO().emit("complaints", {
         action: "task assigned",
-        complaint: complaint
+        complaint: upcmp
       });
       console.log("Task Assigned - admin");
 
-      res.status(200).send(complaint);
+      res.status(200).send(upcmp);
     } catch (error) {
       res.status(500).send("Error occured", error);
     }

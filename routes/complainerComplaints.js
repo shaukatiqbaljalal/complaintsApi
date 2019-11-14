@@ -49,8 +49,7 @@ router.get("/", authComplainer, async (req, res) => {
   const complaints = await Complaint.find({
     complainer: req.complainer._id
   })
-    // .populate('complainer', 'name -_id')
-    // .populate('assignedTo', 'name -_id')
+    .populate("complainer", "name _id")
     .populate("assignedTo", "name _id")
     .populate("category", "name _id");
 
@@ -180,18 +179,24 @@ router.post(
     console.log(complaint);
     try {
       await complaint.save();
+      let newUp = await Complaint.findById(complaint._id)
+        .populate("complainer", "name _id")
+        .populate("assignedTo", "name _id")
+        .populate("category", "name _id");
+
       io.getIO().emit("complaints", {
         action: "new complaint",
-        complaint: complaint
+        complaint: newUp
       });
       console.log("new complaint - complainer");
 
-      res.send(complaint);
+      res.send(newUp);
     } catch (error) {
       res.status(500).send("Some error occured while fetching file", e);
     }
   }
 );
+
 // // <------Assigning complaint to ASSIGNEE afteer specified time------->
 // const assignee = await Assignee.findOne({
 //   responsibility: complaint.category
@@ -306,10 +311,15 @@ router.put("/feedback/:id", authComplainer, async (req, res) => {
   }
   try {
     await complaint.save();
+    const newUp = await Complaint.findOne({ _id: req.params.id })
+      .populate("complainer", "name _id")
+      .populate("assignedTo", "name _id")
+      .populate("category", "name _id");
 
-    io.getIO().emit("complaints", { action: "feedback", complaint: complaint });
+    io.getIO().emit("complaints", { action: "feedback", complaint: newUp });
     console.log("feedback given complaint - assignee");
-    res.send(complaint);
+
+    res.send(newUp);
   } catch (error) {
     res.status(404).send("Could not find file.");
   }

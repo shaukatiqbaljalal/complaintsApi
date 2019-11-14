@@ -220,12 +220,12 @@ router.put(
         .status(404)
         .send("The complainer with the given ID was not found.");
     if (req.body.email) {
-      complainer = await Complainer.findOne({
+      let alreadyRegistered = await Complainer.findOne({
         email: req.body.email.toLowerCase(),
         companyId: req.user.companyId
       });
 
-      if (complainer && complainer._id != req.params.id)
+      if (alreadyRegistered && alreadyRegistered._id != req.params.id)
         return res.status(400).send("email already registered");
     }
 
@@ -237,6 +237,8 @@ router.put(
     if (!profilePath) profilePicture = null;
     req.body.profilePath = profilePath;
     req.body.profilePicture = profilePicture;
+    req.body.password = complainer.password;
+    console.log(req.body);
     complainer = await Complainer.findByIdAndUpdate(req.params.id, req.body, {
       new: true
     });
