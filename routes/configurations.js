@@ -17,19 +17,22 @@ router.post("/", async (req, res) => {
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
   console.log(req.body);
-  let configuration = await Configuration.findOne({
+  let configuration = await Configuration.find({
     companyId: req.body.companyId
   });
-
-  if (configuration > 0)
+  console.log(configuration, "Config");
+  if (configuration.length > 0)
     return res.status(400).send("Configuration object already exists.");
 
   configuration = new Configuration(req.body);
+  console.log(configuration);
   try {
     await configuration.save();
+    console.log(configuration);
+
     res.send(configuration);
   } catch (error) {
-    res.send(error);
+    res.status(500).send(error);
   }
 });
 
