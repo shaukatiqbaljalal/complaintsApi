@@ -76,10 +76,12 @@ router.post(
       password: req.body.password,
       phone: req.body.phone
     });
+
     if (req.file) {
       admin.set("profilePath", req.file.filename);
       admin.set("profilePicture", fs.readFileSync(req.file.path));
     }
+
     // const salt = await bcrypt.genSalt(10);
     // admin.password = await bcrypt.hash(admin.password, salt);
     const options = getEmailOptions(

@@ -24,6 +24,8 @@ const complainerComplaints = require("./routes/complainerComplaints");
 const assigneeComplaints = require("./routes/assigneeComplaints");
 const adminComplaints = require("./routes/adminComplaints");
 
+const notifications = require("./routes/notifications");
+
 const authUser = require("./routes/authUser");
 const authCompaliner = require("./routes/authComplainer");
 const authAssignee = require("./routes/authAssignee");
@@ -82,6 +84,7 @@ app.use("/api/companies", companies);
 app.use("/api/complainers", complainers);
 app.use("/api/assignees", assignees);
 app.use("/api/admins", admins);
+
 //For configurations
 app.use("/api/company-details", companyDetails);
 app.use("/api/higher-authorities", higherAuthorities);
@@ -95,6 +98,9 @@ app.use("/api/admin-complaints", adminComplaints);
 
 // for getting all categories
 app.use("/api/categories", categories);
+
+// for getting all notifications
+app.use("/api/notifications", notifications);
 
 // for messages
 app.use("/api/messages", messages);

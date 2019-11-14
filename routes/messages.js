@@ -73,7 +73,9 @@ router.post("/", upload.single("messageBody"), async (req, res) => {
       receiver: req.body.receiver
     });
   }
+
   await message.save();
+
   io.getIO().emit("msg", message);
   res.send(message);
 });

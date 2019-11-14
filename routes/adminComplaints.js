@@ -1,5 +1,6 @@
 const { Complaint } = require("../models/complaint");
 const { Assignee } = require("../models/assignee");
+const { Notification } = require("../models/notification");
 const authAdmin = require("../middleware/authAdmin");
 const io = require("../socket");
 const express = require("express");
@@ -12,7 +13,7 @@ const path = require("path");
 // Getting complaints of Admin -- Admin
 router.get("/", authAdmin, async (req, res) => {
   const complaints = await Complaint.find()
-    .select("_id title status")
+
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
@@ -35,9 +36,7 @@ router.get("/:id", authAdmin, async (req, res) => {
   //   return res.status(400).send("The id is not valid.");
   // }
   const complaint = await Complaint.findOne({ _id: req.params.id })
-    .select(
-      "_id title status location assigned spam details files remarks timeStamp feedbackRemarks feedbackTags"
-    )
+
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
@@ -151,7 +150,18 @@ router.put(
     complaint.assigned = true;
     complaint.assignedTo = { _id: req.params.assigneeId };
 
+    let notification = new Notification({
+      msg: `You have been assigned with new complaint`,
+      receivers: {
+        role: "",
+        id: complaint.assignedTo._id
+      },
+      companyId: "123",
+      complaintId: complaint._id
+    });
+
     await complaint.save();
+    await notification.save();
 
     io.getIO().emit("complaints", {
       action: "task assigned",

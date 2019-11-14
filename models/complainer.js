@@ -17,6 +17,7 @@ const complainerSchema = new mongoose.Schema({
     maxlength: 255,
     unique: true
   },
+
   phone: {
     type: String,
     required: false,
@@ -30,12 +31,14 @@ const complainerSchema = new mongoose.Schema({
     minlength: 8,
     maxlength: 1024
   },
+
   profilePath: {
     type: String,
     required: false,
     minlength: 5,
     maxlength: 1024
   },
+
   profilePicture: { type: Buffer }
 });
 

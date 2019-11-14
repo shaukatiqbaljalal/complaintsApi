@@ -6,6 +6,8 @@ const { Category } = require("../models/category");
 const { Assignee } = require("../models/assignee");
 const { Complainer } = require("../models/complainer");
 const { Admin } = require("../models/admin");
+const { Notification } = require("../models/notification");
+
 const checkSeverity = require("../utils/severity");
 const authComplainer = require("../middleware/authComplainer");
 const io = require("../socket");
@@ -36,8 +38,8 @@ const multerFilter = (req, file, cb) => {
 
 // multer upload
 const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter
+  storage: multerStorage
+  // fileFilter: multerFilter
 });
 
 // complainer can find only his complaints -- Complainer
@@ -47,7 +49,7 @@ router.get("/", authComplainer, async (req, res) => {
   })
     // .populate('complainer', 'name -_id')
     // .populate('assignedTo', 'name -_id')
-    .select("_id title status")
+
     .populate("assignedTo", "name _id")
     .populate("category", "name _id");
 
@@ -75,6 +77,9 @@ router.post(
   async (req, res) => {
     // const { error } = validate(req.body);
     // if (error) return res.status(400).send(error.details[0].message);
+    console.log("POST CC");
+    console.log("cp req.body", req.body);
+    console.log("cp req.file", req.file);
 
     const severity = checkSeverity(req.body.details);
     const category = await Category.findById(req.body.categoryId);
@@ -94,6 +99,21 @@ router.post(
 
     const title = req.body.title.toLowerCase();
 
+    let location = "";
+    if (req.body.latitude) {
+      location = {
+        lat: req.body.latitude,
+        lng: req.body.longitude
+      };
+    }
+
+    // if (req.file) {
+    //   admin.set("profilePath", req.file.filename);
+    //   admin.set("profilePicture", fs.readFileSync(req.file.path));
+    // }
+
+    console.log(req.body);
+
     let complaint = new Complaint({
       category: {
         _id: category._id
@@ -105,22 +125,33 @@ router.post(
         _id: assignee ? assignee._id : adminAssignee._id
       },
       assigned: assignee ? true : false,
-      geolocation: req.body.geolocation ? req.body.geolocation : "",
+      geolocation: req.body.latitude ? location : "",
       details: req.body.details,
       title: title,
       location: req.body.location,
       severity: severity,
       files: req.file ? req.file.filename : ""
+      // files: req.body.complainta ? req.body.complainta : ""
+    });
+
+    let notification = new Notification({
+      msg: `New complaint has been added with severity ${severity}.`,
+      receivers: {
+        role: "admin",
+        id: assignee ? assignee._id : adminAssignee._id
+      },
+      companyId: "123",
+      complaintId: complaint._id
     });
 
     await complaint.save();
+    await notification.save();
 
     io.getIO().emit("complaints", {
       action: "new complaint",
-      complaint: complaint
+      complaint: complaint,
+      notification: notification
     });
-    console.log("new complaint - complainer");
-
     res.send(complaint);
 
     // // <------Assigning complaint to ASSIGNEE afteer specified time------->
@@ -239,9 +270,24 @@ router.put("/feedback/:id", authComplainer, async (req, res) => {
     complaint.feedbackTags = "satisfied";
   }
 
-  await complaint.save();
+  let notification = new Notification({
+    msg: `You have been given feedback.`,
+    receivers: {
+      role: "",
+      id: complaint.assignedTo._id
+    },
+    companyId: "123",
+    complaintId: complaint._id
+  });
 
-  io.getIO().emit("complaints", { action: "feedback", complaint: complaint });
+  await complaint.save();
+  await notification.save();
+
+  io.getIO().emit("complaints", {
+    action: "feedback",
+    complaint: complaint,
+    notification: notification
+  });
   console.log("feedback given complaint - assignee");
   res.send(complaint);
 });
@@ -288,9 +334,7 @@ router.get("/:id", async (req, res) => {
   const complaint = await Complaint.findOne({
     _id: req.params.id
   })
-    .select(
-      "_id title status location spam details files remarks timeStamp feedbackRemarks feedbackTags"
-    )
+
     .populate("complainer", "name _id")
     .populate("assignedTo", "name _id")
     .populate("category", "name _id");
