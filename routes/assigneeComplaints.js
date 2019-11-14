@@ -1,5 +1,6 @@
 const { Complaint } = require("../models/complaint");
 const { Admin } = require("../models/admin");
+const { Notification } = require("../models/notification");
 const authAssignee = require("../middleware/authAssignee");
 const io = require("../socket");
 const express = require("express");
@@ -7,6 +8,7 @@ const router = express.Router();
 
 // Getting complaints of assignee -- Assignee
 router.get("/", authAssignee, async (req, res) => {
+  console.log("get All complaints");
   const complaints = await Complaint.find({
     assignedTo: req.assignee._id,
     spam: false
@@ -42,11 +44,25 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
   complaint.assigned = false;
 
   try {
+    let notification = new Notification({
+      msg: `Complaint's is dropped by ${complaint.assignedTo.name}`,
+      receivers: {
+        role: "admin",
+        id: null
+      },
+      companyId: "123",
+      complaintId: complaint._id
+    });
+
     await complaint.save();
+    await notification.save();
+
     io.getIO().emit("complaints", {
       action: "drop",
-      complaint: complaint
+      complaint: complaint,
+      notification: notification
     });
+
     console.log("dropped complaint - assignee");
     res.status(200).send("You have successfully dropped responsibility");
   } catch (error) {
@@ -94,9 +110,10 @@ router.put("/remove/spam/:id", authAssignee, async (req, res) => {
 
 // getting all spam complaints
 router.get("/assignee/spam/complaints", authAssignee, async (req, res) => {
-  const complaints = await Complaint.find({ spamBy: req.assignee._id })
-    .select("_id title status")
-    .populate("category", "name _id");
+  const complaints = await Complaint.find({
+    spamBy: req.assignee._id
+  }).populate("category", "name _id");
+
   if (!complaints) return res.status(404).send("No Spam list found.");
   res.send(complaints);
 });
@@ -109,15 +126,28 @@ router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
   complaint.status = req.params.status;
   complaint.remarks = req.params.remarks;
   try {
+    let notification = new Notification({
+      msg: `Complaint status has been changed.`,
+      receivers: {
+        role: "",
+        id: complaint.complainer._id
+      },
+      companyId: "123",
+      complaintId: complaint._id
+    });
+
     await complaint.save();
+    await notification.save();
     let newUp = await Complaint.findById(req.params.id)
       .populate("assignedTo", "name _id")
       .populate("complainer", "name _id")
       .populate("category", "name _id");
     io.getIO().emit("complaints", {
       action: "status changed",
-      complaint: newUp
+      complaint: newUp,
+      notification: notification
     });
+
     console.log("status changed - assignee");
 
     res.status(200).send(newUp);

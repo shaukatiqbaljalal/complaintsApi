@@ -94,10 +94,12 @@ router.post(
       phone: req.body.phone,
       companyId: req.body.companyId
     });
+
     if (req.file) {
       admin.set("profilePath", req.file.filename);
       admin.set("profilePicture", fs.readFileSync(req.file.path));
     }
+
     // const salt = await bcrypt.genSalt(10);
     // admin.password = await bcrypt.hash(admin.password, salt);
     const options = getEmailOptions(

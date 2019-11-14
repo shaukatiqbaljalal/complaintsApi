@@ -103,6 +103,7 @@ router.post(
   passwordGenerator,
   async (req, res) => {
     const { error } = validate(req.body);
+
     if (error) return res.status(400).send(error.details[0].message);
     let complainer = await Complainer.findOne({
       email: req.body.email.toLowerCase(),
@@ -114,6 +115,7 @@ router.post(
     complainer = new Complainer(
       _.pick(req.body, ["name", "email", "password", "phone", "companyId"])
     );
+
     if (req.file) {
       complainer.set("profilePath", req.file.filename);
       complainer.set("profilePicture", fs.readFileSync(req.file.path));
@@ -128,9 +130,11 @@ router.post(
       "Registration of Account Confirmation",
       "complainer"
     );
+
     console.log("Created Complainer object", complainer);
     // const salt = await bcrypt.genSalt(10);
     // complainer.password = await bcrypt.hash(complainer.password, salt);
+
     complainer.password = encrypt(complainer.password);
 
     await complainer.save();

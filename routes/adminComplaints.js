@@ -1,6 +1,8 @@
 const { Complaint } = require("../models/complaint");
 const authUser = require("../middleware/authUser");
 
+const { Assignee } = require("../models/assignee");
+const { Notification } = require("../models/notification");
 const authAdmin = require("../middleware/authAdmin");
 const io = require("../socket");
 const express = require("express");
@@ -147,7 +149,20 @@ router.put(
     complaint.assigned = true;
     complaint.assignedTo = { _id: req.params.assigneeId };
     try {
+      let notification = new Notification({
+        msg: `You have been assigned with new complaint`,
+        receivers: {
+          role: "",
+          id: complaint.assignedTo._id
+        },
+        companyId: "123",
+        complaintId: complaint._id
+      });
       await complaint.save();
+      await notification.save();
+
+      console.log("Task Assigned - admin");
+
       const upcmp = await Complaint.findById(req.params.complaintId)
         .populate("assignedTo", "name _id")
         .populate("complainer", "name _id")
@@ -155,7 +170,7 @@ router.put(
 
       io.getIO().emit("complaints", {
         action: "task assigned",
-        complaint: upcmp
+        complaint: complaint
       });
       console.log("Task Assigned - admin");
 

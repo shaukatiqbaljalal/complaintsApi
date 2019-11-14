@@ -89,7 +89,6 @@ router.post("/delete", authUser, async (req, res) => {
     sender: req.body.sender,
     receiver: req.body.receiver
   });
-
   const msg1 = await Message.deleteMany({
     sender: req.body.receiver,
     receiver: req.body.sender

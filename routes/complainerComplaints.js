@@ -7,6 +7,8 @@ const { Assignee } = require("../models/assignee");
 // const { Configuration } = require("../models/configuration");
 const { Complainer } = require("../models/complainer");
 const { Admin } = require("../models/admin");
+const { Notification } = require("../models/notification");
+
 const checkSeverity = require("../utils/severity");
 const authComplainer = require("../middleware/authComplainer");
 const io = require("../socket");
@@ -79,6 +81,9 @@ router.post(
     if (!req.body.companyId) req.body.companyId = req.complainer.companyId;
     // const { error } = validate(req.body);
     // if (error) return res.status(400).send(error.details[0].message);
+    console.log("POST CC");
+    console.log("cp req.body", req.body);
+    console.log("cp req.file", req.file);
 
     // Validate the attached file is allowed
     if (req.file) {
@@ -151,12 +156,18 @@ router.post(
     const complainer = await Complainer.findById(req.complainer._id);
     if (!complainer) return res.status(400).send("Invalid Complainer.");
 
-    const title = capitalizeFirstLetter(req.body.title);
-    const location = {
-      lat: req.body.latitude,
-      lng: req.body.longitude
-    };
-    console.log(location);
+    const title = capitalizeFirstLetter(req.body.title.toLowerCase());
+
+    let location = "";
+    if (req.body.latitude) {
+      location = {
+        lat: req.body.latitude,
+        lng: req.body.longitude
+      };
+    }
+
+    console.log(req.body);
+
     let complaint = new Complaint({
       category: {
         _id: category._id
@@ -168,7 +179,7 @@ router.post(
         _id: assignee ? assignee._id : adminAssignee._id
       },
       assigned: assignee ? true : false,
-      geolocation: location ? location : "",
+      geolocation: req.body.latitude ? location : "",
       details: req.body.details,
       title: title,
       location: req.body.location,
@@ -178,16 +189,29 @@ router.post(
     });
     console.log(complaint);
     try {
+      let notification = new Notification({
+        msg: `New complaint has been added with severity ${severity}.`,
+        receivers: {
+          role: "admin",
+          id: assignee ? assignee._id : adminAssignee._id
+        },
+        companyId: "123",
+        complaintId: complaint._id
+      });
+
       await complaint.save();
+      await notification.save();
+
       let newUp = await Complaint.findById(complaint._id)
         .populate("complainer", "name _id")
         .populate("assignedTo", "name _id")
         .populate("category", "name _id");
-
       io.getIO().emit("complaints", {
         action: "new complaint",
-        complaint: newUp
+        complaint: newUp,
+        notification: notification
       });
+
       console.log("new complaint - complainer");
 
       res.send(newUp);
@@ -310,13 +334,27 @@ router.put("/feedback/:id", authComplainer, async (req, res) => {
     complaint.feedbackTags = "satisfied";
   }
   try {
+    let notification = new Notification({
+      msg: `You have been given feedback.`,
+      receivers: {
+        role: "",
+        id: complaint.assignedTo._id
+      },
+      companyId: "123",
+      complaintId: complaint._id
+    });
+
     await complaint.save();
+    await notification.save();
     const newUp = await Complaint.findOne({ _id: req.params.id })
       .populate("complainer", "name _id")
       .populate("assignedTo", "name _id")
       .populate("category", "name _id");
-
-    io.getIO().emit("complaints", { action: "feedback", complaint: newUp });
+    io.getIO().emit("complaints", {
+      action: "feedback",
+      complaint: newUp,
+      notification: notification
+    });
     console.log("feedback given complaint - assignee");
 
     res.send(newUp);
