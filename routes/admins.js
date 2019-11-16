@@ -2,6 +2,8 @@ const encrypt = require("./../common/encrypt");
 const capitalizeFirstLetter = require("./../common/helper");
 const { Company } = require("../models/company");
 const { Admin, validate } = require("../models/admin");
+const { Complainer } = require("../models/complainer");
+const { Assignee } = require("../models/assignee");
 const passwordGenrator = require("./../middleware/passwordGenerator");
 const fs = require("fs");
 const deleteFile = require("./../common/deleteFile");
@@ -57,14 +59,36 @@ router.get("/:id", async (req, res) => {
     res.send(error);
   }
 });
+//search user by email
+// body must have email,companyId && role
+router.post("/user/search", async (req, res) => {
+  console.log(req.body);
+  let user;
+  switch (req.body.role) {
+    case "admin":
+      user = await Admin.findOne({
+        email: req.body.email,
+        companyId: req.body.companyId
+      });
+      break;
+    case "complainer":
+      user = await Complainer.findOne({
+        email: req.body.email,
+        companyId: req.body.companyId
+      });
+      break;
+    case "assignee":
+      user = await Assignee.findOne({
+        email: req.body.email,
+        companyId: req.body.companyId
+      });
+      break;
+    default:
+      return res.status(400).send("Role must be complaine,admin or assignee");
+  }
 
-router.get("/email/:email", async (req, res) => {
-  let admin = await Admin.findOne({
-    email: req.params.email,
-    companyId: req.user.companyId
-  });
-  if (!admin) return res.status(404).send("User with given id not found.");
-  res.send(_.pick(admin, ["_id", "name", "email", "profilePicture"]));
+  if (!user) return res.status(404).send("User with given id not found.");
+  res.send(_.pick(user, ["_id", "name", "email", "profilePicture"]));
 });
 
 //body must have companyId to create Admin
