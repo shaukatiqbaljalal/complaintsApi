@@ -125,7 +125,9 @@ router.get("/assignee/spam/complaints", authAssignee, async (req, res) => {
 // change status of a complaint
 router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
   // const complaint = await Complaint.findOne({ _id: req.params.id });
-  const complaint = await Complaint.findById(req.params.id);
+  const complaint = await Complaint.findById(req.params.id)
+    .populate("complainer", "name _id")
+    .populate("assignedTo", "name _id");
   let remarks = complaint.remarks;
   let newRemarks = `From: ${complaint.status} To: ${req.params.status}> ${req.params.remarks}`;
   remarks.push(newRemarks);
