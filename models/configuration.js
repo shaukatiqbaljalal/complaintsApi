@@ -19,6 +19,14 @@ const configurationSchema = new mongoose.Schema({
   isSeverity: {
     type: Boolean,
     required: true
+  },
+  delayedDays: {
+    type: String,
+    required: true
+  },
+  isReopen: {
+    type: Boolean,
+    required: true
   }
 });
 
@@ -29,6 +37,8 @@ function validateConfigurationObject(configuration) {
     isAccountCreation: Joi.boolean().required(),
     isMessaging: Joi.boolean().required(),
     isSeverity: Joi.boolean().required(),
+    isReopen: Joi.boolean().required(),
+    delayedDays: Joi.String().required(),
     companyId: Joi.ObjectId().required()
   };
 
