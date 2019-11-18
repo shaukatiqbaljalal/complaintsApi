@@ -101,9 +101,10 @@ router.post(
           .status(400)
           .send("The attached file is larger than allowed size.");
     }
-
+    console.log(req.body, "Body");
     let severity;
     if (!req.body.severity) {
+      console.log("if");
       severity = checkSeverity(req.body.details);
     } else {
       switch (+req.body.severity) {
@@ -120,6 +121,7 @@ router.post(
           severity = "Low";
           break;
       }
+      console.log("else");
     }
 
     const category = await Category.findById(req.body.categoryId);
@@ -128,6 +130,7 @@ router.post(
     const assignees = await Assignee.find({
       "responsibilities._id": category._id.toString()
     }).select("name");
+    // console.log('assignees',assignees);
     console.log("Assignees", assignees);
     let adminAssignee = null;
     let assignee;
@@ -145,8 +148,9 @@ router.post(
           countArr.push(count);
         });
       }
-
+      console.log(countArr, "Count array");
       let index = countArr.indexOf(Math.min(...countArr));
+      console.log("index", index);
       if (index >= 0) assignee = assignees[index];
       else assignee = assignees[0];
     }
@@ -184,7 +188,8 @@ router.post(
       location: req.body.location,
       severity: severity,
       files: req.file ? req.file.filename : "",
-      companyId: req.body.companyId
+      companyId: req.body.companyId,
+      remarks: []
     });
 
     try {

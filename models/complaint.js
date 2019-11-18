@@ -69,7 +69,7 @@ const Complaint = mongoose.model(
       default: Date.now
     },
     remarks: {
-      type: String,
+      type: [String],
       default: ""
     },
     feedbackRemarks: {

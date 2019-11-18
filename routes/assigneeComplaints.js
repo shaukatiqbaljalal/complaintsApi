@@ -125,15 +125,12 @@ router.get("/assignee/spam/complaints", authAssignee, async (req, res) => {
 // change status of a complaint
 router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
   // const complaint = await Complaint.findOne({ _id: req.params.id });
-  const complaint = await Complaint.findById(req.params.id)
-    .populate("assignedTo", "name _id")
-    .populate("complainer", "name _id")
-    .populate("category", "name _id");
-
-  console.log(complaint.complainer);
-
-  complaint.status = req.params.status;
-  complaint.remarks = req.params.remarks;
+  const complaint = await Complaint.findById(req.params.id);
+  let remarks = complaint.remarks;
+  let newRemarks = `From: ${complaint.status} To: ${req.params.status}> ${req.params.remarks}`;
+  remarks.push(newRemarks);
+  complaint.set("remarks", remarks);
+  complaint.set("status", req.params.status);
   try {
     let notification = new Notification({
       msg: `Complaint status has been changed.`,
@@ -157,6 +154,31 @@ router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
       notification: notification
     });
 
+    console.log("status changed - assignee");
+
+    res.status(200).send(newUp);
+  } catch (error) {
+    res.status(500).send("Some error occured", error);
+  }
+});
+
+// change status of a complaint
+router.put("/:id", authAssignee, async (req, res) => {
+  // const complaint = await Complaint.findOne({ _id: req.params.id });
+
+  try {
+    const complaint = await Complaint.findByIdAndUpdate(
+      req.params.id,
+      req.body
+    );
+    let newUp = await Complaint.findById(req.params.id)
+      .populate("assignedTo", "name _id")
+      .populate("complainer", "name _id")
+      .populate("category", "name _id");
+    io.getIO().emit("complaints", {
+      action: "status changed",
+      complaint: newUp
+    });
     console.log("status changed - assignee");
 
     res.status(200).send(newUp);
