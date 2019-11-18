@@ -10,6 +10,7 @@ const authUser = require("./../middleware/authUser");
 
 router.post("/recover", async (req, res) => {
   const { role, email, companyId } = req.body;
+  console.log("recover", role, email, companyId);
   if (!role || !companyId)
     return res.status(400).send("Role, and company id is required");
   let user;

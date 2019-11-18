@@ -146,6 +146,7 @@ router.put(
     res.send(user);
   }
 );
+
 router.put(
   "/profile/:id",
   upload.single("profilePicture"),

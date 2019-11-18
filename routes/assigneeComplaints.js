@@ -27,7 +27,11 @@ router.get("/", authAssignee, async (req, res) => {
 
 // assignee drop responsibility
 router.put("/drop/:id", authAssignee, async (req, res) => {
-  const complaint = await Complaint.findById(req.params.id);
+  const complaint = await Complaint.findById(req.params.id)
+    .populate("assignedTo", "name _id")
+    .populate("complainer", "name _id")
+    .populate("category", "name _id");
+
   if (!complaint)
     return res.status(404).send("Complaint with given ID was not found.");
   if (complaint.status !== "in-progress") {
@@ -45,12 +49,12 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
 
   try {
     let notification = new Notification({
-      msg: `Complaint's is dropped by ${complaint.assignedTo.name}`,
+      msg: `Complaint is dropped by ${complaint.assignedTo.name}`,
       receivers: {
         role: "admin",
         id: null
       },
-      companyId: "123",
+      companyId: req.assignee.companyId,
       complaintId: complaint._id
     });
 
@@ -121,7 +125,12 @@ router.get("/assignee/spam/complaints", authAssignee, async (req, res) => {
 // change status of a complaint
 router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
   // const complaint = await Complaint.findOne({ _id: req.params.id });
-  const complaint = await Complaint.findById(req.params.id);
+  const complaint = await Complaint.findById(req.params.id)
+    .populate("assignedTo", "name _id")
+    .populate("complainer", "name _id")
+    .populate("category", "name _id");
+
+  console.log(complaint.complainer);
 
   complaint.status = req.params.status;
   complaint.remarks = req.params.remarks;
@@ -132,7 +141,7 @@ router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
         role: "",
         id: complaint.complainer._id
       },
-      companyId: "123",
+      companyId: req.assignee.companyId,
       complaintId: complaint._id
     });
 

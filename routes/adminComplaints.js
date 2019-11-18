@@ -144,7 +144,10 @@ router.put(
   "/assigned/:complaintId/:assigneeId",
   authAdmin,
   async (req, res) => {
-    const complaint = await Complaint.findById(req.params.complaintId);
+    const complaint = await Complaint.findById(req.params.complaintId)
+      .populate("assignedTo", "name _id")
+      .populate("complainer", "name _id")
+      .populate("category", "name _id");
 
     complaint.assigned = true;
     complaint.assignedTo = { _id: req.params.assigneeId };
@@ -155,7 +158,7 @@ router.put(
           role: "",
           id: complaint.assignedTo._id
         },
-        companyId: "123",
+        companyId: req.admin.companyId,
         complaintId: complaint._id
       });
       await complaint.save();
@@ -170,7 +173,8 @@ router.put(
 
       io.getIO().emit("complaints", {
         action: "task assigned",
-        complaint: complaint
+        complaint: complaint,
+        notification: notification
       });
       console.log("Task Assigned - admin");
 

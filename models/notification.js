@@ -15,9 +15,9 @@ const Notification = mongoose.model(
         id: mongoose.Schema.Types.ObjectId
       },
       companyId: {
-        // type: mongoose.Schema.Types.ObjectId,
-        // ref: "Company"
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Company"
+        // type: String
       },
       complaintId: {
         type: mongoose.Schema.Types.ObjectId,

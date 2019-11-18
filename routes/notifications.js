@@ -7,8 +7,6 @@ const authUser = require("../middleware/authUser");
 router.get("/getnotifications", authUser, async (req, res) => {
   let notifications = [];
 
-  console.log("notification", req.user);
-
   try {
     if (req.user.role === "complainer") {
       notifications = await Notification.find({ "receivers.id": req.user._id })

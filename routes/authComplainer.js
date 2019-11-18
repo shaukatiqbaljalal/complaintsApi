@@ -1,10 +1,9 @@
 const Joi = require("joi");
-
 const express = require("express");
-const _ = require("lodash");
-const { Complainer } = require("../models/complainer");
 const router = express.Router();
 const decrypt = require("./../common/decrypt");
+const _ = require("lodash");
+const { Complainer } = require("../models/complainer");
 
 router.post("/", async (req, res) => {
   const { error } = validate(req.body);
