@@ -50,10 +50,8 @@ mongoose
     );
 
     const io = require("./socket").init(server);
-
     io.on("connection", socket => {
       console.log("New client connected");
-
       socket.on("disconnect", () => {
         console.log("Client is disconnected");
       });

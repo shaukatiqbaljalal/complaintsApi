@@ -55,6 +55,8 @@ router.get("/", authComplainer, async (req, res) => {
     .populate("assignedTo", "name _id")
     .populate("category", "name _id");
 
+  // console.log(complaints);
+
   res.send(complaints);
 });
 
@@ -77,13 +79,10 @@ router.post(
   authComplainer,
   upload.single("complaint"),
   async (req, res) => {
-    console.log(req.body);
     if (!req.body.companyId) req.body.companyId = req.complainer.companyId;
+
     // const { error } = validate(req.body);
     // if (error) return res.status(400).send(error.details[0].message);
-    console.log("POST CC");
-    console.log("cp req.body", req.body);
-    console.log("cp req.file", req.file);
 
     // Validate the attached file is allowed
     if (req.file) {
@@ -187,7 +186,7 @@ router.post(
       files: req.file ? req.file.filename : "",
       companyId: req.body.companyId
     });
-    console.log(complaint);
+
     try {
       let notification = new Notification({
         msg: `New complaint has been added with severity ${severity}.`,
@@ -195,7 +194,7 @@ router.post(
           role: "admin",
           id: assignee ? assignee._id : adminAssignee._id
         },
-        companyId: "123",
+        companyId: req.body.companyId,
         complaintId: complaint._id
       });
 
@@ -206,6 +205,7 @@ router.post(
         .populate("complainer", "name _id")
         .populate("assignedTo", "name _id")
         .populate("category", "name _id");
+
       io.getIO().emit("complaints", {
         action: "new complaint",
         complaint: newUp,
@@ -284,7 +284,7 @@ router.get("/download/image/:id", async (req, res, next) => {
 });
 
 // fetching up complaint's picture
-router.get("/view/image/:id", async (req, res, next) => {
+router.get("/view/image", async (req, res, next) => {
   try {
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
@@ -293,19 +293,18 @@ router.get("/view/image/:id", async (req, res, next) => {
       return res.status(404).send("Not file found with this Complaint.");
     }
 
+    const fileExtension = complaint.files.split(".")[1];
+
     const filePath = path.join(
       "public",
       "files",
       "complaints",
       complaint.files
     );
-
     fs.readFile(filePath, (err, data) => {
       if (err) return next(err);
-      res.setHeader(
-        "Content-Type",
-        mime.getType(complaint.files.split(".")[1])
-      );
+
+      res.setHeader("Content-Type", mime.getType(fileExtension));
       res.setHeader(
         "Content-Disposition",
         'inline; filename="' + complaint.files + '"'
@@ -313,13 +312,16 @@ router.get("/view/image/:id", async (req, res, next) => {
       res.send(data);
     });
   } catch (e) {
-    res.status(404).send("Could not find file.");
+    res.status(500).send("Some error occured while fetching file", e);
   }
 });
 
 // Complainer give feedback on certain complaint -- Complainer
 router.put("/feedback/:id", authComplainer, async (req, res) => {
-  const complaint = await Complaint.findOne({ _id: req.params.id });
+  const complaint = await Complaint.findOne({ _id: req.params.id })
+    .populate("assignedTo", "name _id")
+    .populate("complainer", "name _id")
+    .populate("category", "name _id");
 
   if (!complaint)
     return res
@@ -340,7 +342,7 @@ router.put("/feedback/:id", authComplainer, async (req, res) => {
         role: "",
         id: complaint.assignedTo._id
       },
-      companyId: "123",
+      companyId: req.complainer.companyId,
       complaintId: complaint._id
     });
 
@@ -350,6 +352,7 @@ router.put("/feedback/:id", authComplainer, async (req, res) => {
       .populate("complainer", "name _id")
       .populate("assignedTo", "name _id")
       .populate("category", "name _id");
+
     io.getIO().emit("complaints", {
       action: "feedback",
       complaint: newUp,
