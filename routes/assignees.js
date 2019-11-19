@@ -297,16 +297,20 @@ router.put(
       if (alreadyRegistered && alreadyRegistered._id != req.params.id)
         return res.status(400).send("email already registered");
     }
+
     const profilePath = req.file ? req.file.path : req.body.profilePath;
+    let profilePicture = assignee.profilePicture;
+    if (req.file) {
+      profilePicture = fs.readFileSync(req.file.path);
+    }
+    if (!profilePath) profilePicture = null;
+    req.body.profilePath = profilePath;
+    req.body.profilePicture = profilePicture;
+    req.body.password = assignee.password;
+
     if (req.body.responsibilities)
       req.body.responsibilities = JSON.parse(req.body.responsibilities);
-    req.body.profilePath = profilePath;
-    req.body.profilePicture = assignee.profilePicture;
 
-    if (req.file) {
-      req.body.profilePicture = fs.readFileSync(req.file.path);
-    }
-    req.body.password = assignee.password;
     assignee = await Assignee.findByIdAndUpdate(req.params.id, req.body, {
       new: true
     });
