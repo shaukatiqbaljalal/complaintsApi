@@ -173,7 +173,7 @@ router.put(
 
       io.getIO().emit("complaints", {
         action: "task assigned",
-        complaint: complaint,
+        complaint: upcmp,
         notification: notification
       });
       console.log("Task Assigned - admin");

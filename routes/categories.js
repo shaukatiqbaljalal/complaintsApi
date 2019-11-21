@@ -198,7 +198,7 @@ async function isUnique(name, parentCategory) {
   return true;
 }
 
-router.post("/bulk", authUser, async (req, res) => {
+router.post("/bulk", async (req, res) => {
   console.log(req.body.categories);
 
   let categories = req.body.categories;
@@ -209,14 +209,17 @@ router.post("/bulk", authUser, async (req, res) => {
   let index = categories.findIndex(c => c.name === "General");
   if (index >= 0) categories.splice(index, 1);
   //if there is no category in DB
-  let categoriesInDb = await Category.find({ companyId: req.user.companyId });
-  let generaIndex = categoriesInDb.findIndex(c => c.name === "General");
+  let categoriesInDb = await Category.find({ companyId: req.body.companyId });
+  let generaIndex = categoriesInDb.findIndex(
+    c => c.name === "General" && !c.parentCategory
+  );
 
-  if (categoriesInDb.length > 0 && !generaIndex) {
+  if (generaIndex < 0) {
     categories.push({
       id: categories.length + 1,
       name: "General",
-      hasChild: false
+      hasChild: false,
+      companyId: req.body.companyId
     });
   }
   // List<Category> documents= new ArrayList();
@@ -229,7 +232,7 @@ router.post("/bulk", authUser, async (req, res) => {
       ).newId;
       category.parentCategory = newParentCategory;
     }
-    if (!category.companyId) category.companyId = req.user.companyId;
+    if (!category.companyId) category.companyId = req.body.companyId;
     let persistentCategory = new Category(category);
     ids.push({ oldId: oldId, newId: persistentCategory._id });
     docs.push(persistentCategory);

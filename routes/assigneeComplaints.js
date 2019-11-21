@@ -38,6 +38,8 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
     return res.status(400).send("complaint is already closed");
   }
   console.log("after");
+  let assignedToName = complaint.assignedTo.name;
+
   const admin = await Admin.findOne({
     companyId: req.assignee.companyId
   });
@@ -49,7 +51,7 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
 
   try {
     let notification = new Notification({
-      msg: `Complaint is dropped by ${complaint.assignedTo.name}`,
+      msg: `Complaint is dropped by ${assignedToName}`,
       receivers: {
         role: "admin",
         id: null
