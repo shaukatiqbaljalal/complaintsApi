@@ -47,6 +47,7 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
   complaint.assignedTo = {
     _id: admin._id
   };
+  complaint.onModel = "Admin";
   complaint.assigned = false;
   console.log(complaint, "Check");
   try {
@@ -127,9 +128,12 @@ router.get("/assignee/spam/complaints", authAssignee, async (req, res) => {
 // change status of a complaint
 router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
   // const complaint = await Complaint.findOne({ _id: req.params.id });
+
   const complaint = await Complaint.findById(req.params.id)
+    .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
-    .populate("assignedTo", "name _id");
+    .populate("category", "name _id");
+
   let remarks = complaint.remarks;
   let newRemarks = `From: ${complaint.status} To: ${req.params.status}> ${req.params.remarks}`;
   remarks.push(newRemarks);
@@ -171,19 +175,34 @@ router.put("/:id", authAssignee, async (req, res) => {
   // const complaint = await Complaint.findOne({ _id: req.params.id });
 
   try {
-    const complaint = await Complaint.findByIdAndUpdate(
-      req.params.id,
-      req.body
-    );
+    const complaint = await Complaint.findByIdAndUpdate(req.params.id, req.body)
+      .populate("assignedTo", "name _id")
+      .populate("complainer", "name _id")
+      .populate("category", "name _id");
+
+    let notification = new Notification({
+      msg: "Complaint is Re-opened",
+      receivers: {
+        role: "",
+        id: complaint.assignedTo._id
+      },
+      companyId: req.assignee.companyId,
+      complaintId: complaint._id
+    });
+
     let newUp = await Complaint.findById(req.params.id)
       .populate("assignedTo", "name _id")
       .populate("complainer", "name _id")
       .populate("category", "name _id");
+
     io.getIO().emit("complaints", {
       action: "status changed",
-      complaint: newUp
+      complaint: newUp,
+      notification: notification
     });
-    console.log("status changed - assignee");
+    console.log("status changed - assignee - re-opened");
+
+    await notification.save();
 
     res.status(200).send(newUp);
   } catch (error) {

@@ -31,6 +31,28 @@ router.get("/", authAdmin, async (req, res) => {
   res.send(complaints);
 });
 
+// Getting complaints of Admin -- Admin
+router.get("/assigned-complaints", authAdmin, async (req, res) => {
+  const complaints = await Complaint.find({
+    companyId: req.admin.companyId,
+    assignedTo: req.admin._id
+  })
+    .populate("assignedTo", "name _id")
+    .populate("complainer", "name _id")
+    .populate("category", "name _id");
+  // const complaints = await Complaint.find({
+  //   complainer: req.complainer._id
+  // })
+  //   // .populate('category', 'name -_id')
+  //   // .populate('complainer', 'name -_id')
+  //   // .populate('assignedTo', 'name -_id')
+  //   .select('title status details location -_id');
+
+  if (!complaints) return res.status(404).send("No complaints was found.");
+
+  res.send(complaints);
+});
+
 // Admin can get any complaint by ID -- Admin
 router.get("/:id", authUser, async (req, res) => {
   // if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -151,6 +173,7 @@ router.put(
 
     complaint.assigned = true;
     complaint.assignedTo = { _id: req.params.assigneeId };
+    complaint.onModel = "Assignee";
     try {
       let notification = new Notification({
         msg: `You have been assigned with new complaint`,
