@@ -48,7 +48,7 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
     _id: admin._id
   };
   complaint.assigned = false;
-
+  console.log(complaint, "Check");
   try {
     let notification = new Notification({
       msg: `Complaint is dropped by ${assignedToName}`,
@@ -72,7 +72,7 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
     console.log("dropped complaint - assignee");
     res.status(200).send("You have successfully dropped responsibility");
   } catch (error) {
-    res.status(500).send("Some error occured", error);
+    res.status(500).send("Some error occured" + error);
   }
 });
 
