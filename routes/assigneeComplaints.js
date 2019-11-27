@@ -38,6 +38,8 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
     return res.status(400).send("complaint is already closed");
   }
   console.log("after");
+  let assignedToName = complaint.assignedTo.name;
+
   const admin = await Admin.findOne({
     companyId: req.assignee.companyId
   });
@@ -45,11 +47,12 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
   complaint.assignedTo = {
     _id: admin._id
   };
+  complaint.onModel = "Admin";
   complaint.assigned = false;
 
   try {
     let notification = new Notification({
-      msg: `Complaint is dropped by ${complaint.assignedTo.name}`,
+      msg: `Complaint is dropped by ${assignedToName}`,
       receivers: {
         role: "admin",
         id: null
@@ -125,11 +128,6 @@ router.get("/assignee/spam/complaints", authAssignee, async (req, res) => {
 // change status of a complaint
 router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
   // const complaint = await Complaint.findOne({ _id: req.params.id });
-
-  console.log("remarks");
-  console.log(req.params.id);
-  console.log(req.params.status);
-  console.log(req.params.remarks);
 
   const complaint = await Complaint.findById(req.params.id)
     .populate("assignedTo", "name _id")

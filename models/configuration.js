@@ -38,7 +38,7 @@ function validateConfigurationObject(configuration) {
     isMessaging: Joi.boolean().required(),
     isSeverity: Joi.boolean().required(),
     isReopen: Joi.boolean().required(),
-    delayedDays: Joi.String().required(),
+    delayedDays: Joi.string().required(),
     companyId: Joi.ObjectId().required()
   };
 

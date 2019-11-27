@@ -181,6 +181,7 @@ router.post(
       assignedTo: {
         _id: assignee ? assignee._id : adminAssignee._id
       },
+      onModel: assignee ? "Assignee" : "Admin",
       assigned: assignee ? true : false,
       geolocation: req.body.latitude ? location : "",
       details: req.body.details,

@@ -34,7 +34,7 @@ router.post("/sendreports/members", authUser, async (req, res) => {
     console.log(options);
     sendEmail(options);
   }
-  deleteFile(filePath);
+  // deleteFile(filePath);
 });
 
 router.post("/", authUser, passwordGenrator, async (req, res) => {
