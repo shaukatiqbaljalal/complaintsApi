@@ -1,6 +1,6 @@
 const { Complaint } = require("../models/complaint");
 const authUser = require("../middleware/authUser");
-
+const _ = require("lodash");
 const { Assignee } = require("../models/assignee");
 const { Notification } = require("../models/notification");
 const authAdmin = require("../middleware/authAdmin");
@@ -18,13 +18,6 @@ router.get("/", authAdmin, async (req, res) => {
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
-  // const complaints = await Complaint.find({
-  //   complainer: req.complainer._id
-  // })
-  //   // .populate('category', 'name -_id')
-  //   // .populate('complainer', 'name -_id')
-  //   // .populate('assignedTo', 'name -_id')
-  //   .select('title status details location -_id');
 
   if (!complaints) return res.status(404).send("No complaints was found.");
 
@@ -40,19 +33,33 @@ router.get("/assigned-complaints", authAdmin, async (req, res) => {
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
-  // const complaints = await Complaint.find({
-  //   complainer: req.complainer._id
-  // })
-  //   // .populate('category', 'name -_id')
-  //   // .populate('complainer', 'name -_id')
-  //   // .populate('assignedTo', 'name -_id')
-  //   .select('title status details location -_id');
 
   if (!complaints) return res.status(404).send("No complaints was found.");
 
   res.send(complaints);
 });
 
+// Getting complaints of Admin -- Admin
+router.get("/get/uniqueComplainers", authAdmin, async (req, res) => {
+  const complaints = await Complaint.find({
+    companyId: req.admin.companyId,
+    assignedTo: req.admin._id
+  }).populate("complainer", "name _id");
+
+  if (!complaints) return res.status(404).send("No complaints was found.");
+  let arr = [];
+
+  for (let i = 0; i < complaints.length; i++) {
+    if (complaints[i].complainer) {
+      arr.push(complaints[i].complainer);
+    }
+  }
+
+  const uniquecomplainer = _.uniqBy(arr, function(o) {
+    return o._id;
+  });
+  res.send(uniquecomplainer);
+});
 // Admin can get any complaint by ID -- Admin
 router.get("/:id", authUser, async (req, res) => {
   // if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
