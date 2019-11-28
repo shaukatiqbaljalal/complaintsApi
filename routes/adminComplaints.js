@@ -24,7 +24,7 @@ router.get("/", authAdmin, async (req, res) => {
   res.send(complaints);
 });
 
-// Getting complaints of Admin -- Admin
+// Getting assigned complaints of Admin -- Admin
 router.get("/assigned-complaints", authAdmin, async (req, res) => {
   const complaints = await Complaint.find({
     companyId: req.admin.companyId,
@@ -39,7 +39,7 @@ router.get("/assigned-complaints", authAdmin, async (req, res) => {
   res.send(complaints);
 });
 
-// Getting complaints of Admin -- Admin
+// Getting nique complainers
 router.get("/get/uniqueComplainers", authAdmin, async (req, res) => {
   const complaints = await Complaint.find({
     companyId: req.admin.companyId,
