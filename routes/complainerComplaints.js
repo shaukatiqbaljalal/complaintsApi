@@ -83,6 +83,19 @@ router.post(
 
     // const { error } = validate(req.body);
     // if (error) return res.status(400).send(error.details[0].message);
+    let buff = Buffer.from(req.body.mobileFile, "base64");
+    req.body.files = "";
+    if (req.body.mobileFile) {
+      fs.writeFile(
+        `public/files/complaints/cmp-${req.complainer._id}-${Date.now()}.png`,
+        buff,
+        err => {
+          req.body.files = `cmp-${req.complainer._id}-${Date.now()}.png`;
+          if (err) return console.log(err, "err");
+          console.log("file is stored");
+        }
+      );
+    }
 
     // Validate the attached file is allowed
     if (req.file) {
@@ -188,7 +201,7 @@ router.post(
       title: title,
       location: req.body.location,
       severity: severity,
-      files: req.file ? req.file.filename : "",
+      files: req.file ? req.file.filename : req.body.files,
       companyId: req.body.companyId,
       remarks: []
     });
