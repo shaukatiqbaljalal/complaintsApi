@@ -22,6 +22,7 @@ const emails = require("./routes/emails");
 const complainerComplaints = require("./routes/complainerComplaints");
 const assigneeComplaints = require("./routes/assigneeComplaints");
 const adminComplaints = require("./routes/adminComplaints");
+const samplecsv = require("./routes/samplecsv");
 
 const notifications = require("./routes/notifications");
 
@@ -94,6 +95,8 @@ app.use("/api/admin-complaints", adminComplaints);
 
 // for getting all categories
 app.use("/api/categories", categories);
+//for sample csvs
+app.use("/api/samplecsv", samplecsv);
 
 // for getting all notifications
 app.use("/api/notifications", notifications);

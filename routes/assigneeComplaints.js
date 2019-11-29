@@ -27,7 +27,7 @@ router.get("/", authAssignee, async (req, res) => {
 
 // assignee drop responsibility
 router.put("/drop/:id", authAssignee, async (req, res) => {
-  const complaint = await Complaint.findById(req.params.id)
+  let complaint = await Complaint.findById(req.params.id)
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
     .populate("category", "name _id");
@@ -49,7 +49,7 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
   };
   complaint.onModel = "Admin";
   complaint.assigned = false;
-
+  console.log(complaint, "Check");
   try {
     let notification = new Notification({
       msg: `Complaint is dropped by ${assignedToName}`,
@@ -63,7 +63,10 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
 
     await complaint.save();
     await notification.save();
-
+    complaint = await Complaint.findById(req.params.id)
+      .populate("assignedTo", "name _id")
+      .populate("complainer", "name _id")
+      .populate("category", "name _id");
     io.getIO().emit("complaints", {
       action: "drop",
       complaint: complaint,
@@ -73,7 +76,7 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
     console.log("dropped complaint - assignee");
     res.status(200).send("You have successfully dropped responsibility");
   } catch (error) {
-    res.status(500).send("Some error occured", error);
+    res.status(500).send("Some error occured" + error);
   }
 });
 

@@ -2,7 +2,6 @@ const { Category, validate } = require("../models/category");
 const { Assignee } = require("../models/assignee");
 const { categorySelection } = require("../utils/categorySelection");
 const authUser = require("./../middleware/authUser");
-
 const authAssignee = require("../middleware/authAssignee");
 const express = require("express");
 const router = express.Router();
@@ -21,11 +20,9 @@ router.get("/assignee/allCategories/all", authAssignee, async (req, res) => {
 // getting assignee categories
 router.get("/assignee/:id", authAssignee, async (req, res) => {
   const assignee = await Assignee.findOne({ _id: req.params._id });
-
   const categories = await Category.find({
     _id: "assignee.responsibilities._id"
   });
-
   res.status(200).send(categories);
 });
 
@@ -90,6 +87,42 @@ router.get("/find/parent/category/:id", async (req, res) => {
     return res.status(404).send("Category with given id not found");
 
   res.send(category);
+});
+
+router.get("/fullpath/:categoryId", authUser, async (req, res) => {
+  let arr = [];
+  let category = await Category.findById(req.params.categoryId);
+  if (!category)
+    return res.status(400).send("Category with given id not found.");
+  arr.push(category);
+  while (category.parentCategory) {
+    category = await Category.findById({ _id: category.parentCategory });
+    arr.unshift(category);
+  }
+  return res.status(200).send(arr);
+});
+
+router.post("/get/multiplePaths", authUser, async (req, res) => {
+  let fullpaths = [];
+  let { responsibilities } = req.body;
+  console.log(req.body.responsibilities);
+  for (let index = 0; index < responsibilities.length; index++) {
+    let path = [];
+    const responsibility = responsibilities[index];
+    let category = await Category.findById(responsibility._id);
+    if (!category)
+      return res
+        .status(400)
+        .send("Category with given id not found. " + responsibility._id);
+    path.push(category);
+    while (category.parentCategory) {
+      category = await Category.findById({ _id: category.parentCategory });
+      path.unshift(category);
+    }
+    fullpaths.push(path);
+  }
+
+  return res.status(200).send(fullpaths);
 });
 
 //categories' siblings
@@ -273,19 +306,22 @@ router.put("/updatebulk", authUser, async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", authUser, async (req, res) => {
   if (!req.body.companyId) req.body.companyId = req.user.companyId;
+  console.log(req.body, "Before");
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
   //find category
   let category = await Category.findOne({ _id: req.params.id });
   if (!category)
     return res.status(404).send("No Category with given Id found.");
-
-  //find parent category
+  let rootCategory = await Category.findOne({ name: "root", companyId: null });
   let parentCategory = null;
-  if (req.body.parentCategory)
-    parentCategory = await _findCategoryById(req.body.parentCategory);
+  if (req.body.parentCategory && req.body.parentCategory == rootCategory._id) {
+    console.log("Ids equal");
+    req.body.parentCategory = null;
+    parentCategory = null;
+  } else parentCategory = await _findCategoryById(req.body.parentCategory);
 
   //check if the name is different then confirm its not already present
   if (category.name !== req.body.name) {
@@ -310,7 +346,7 @@ router.put("/:id", async (req, res) => {
   if (req.body.parentCategory && req.body.parentCategory === req.params.id) {
     return res.status(400).send("category cannot be its own Parent.");
   }
-
+  console.log(req.body);
   //then update it
   try {
     category = await Category.findByIdAndUpdate(
@@ -321,7 +357,7 @@ router.put("/:id", async (req, res) => {
       }
     );
     let updatedParentCategory = parentCategory;
-    if (!parentCategory.hasChild) {
+    if (parentCategory && !parentCategory.hasChild) {
       updatedParentCategory = await toggleHasChild(parentCategory._id);
       console.log("Updated Parent Category", updatedParentCategory);
     }
@@ -348,6 +384,7 @@ router.post("/sentiment/selection", authUser, async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   const category = await Category.findById(req.params.id);
+  console.log(category);
   if (!category) return res.status(400).send("Category Not found");
   if (!category.hasChild) {
     //make has child false of the parent of deleting catg if no child left
@@ -365,6 +402,22 @@ router.delete("/:id", async (req, res) => {
     }
   }
   return res.status(400).send("You cannot delete this category");
+});
+
+router.delete("/childsOf/:id", async (req, res) => {
+  try {
+    let childs = await childsOf(req.params.id);
+    console.log(childs);
+    if (childs.length > 0) {
+      for (let index = 0; index < childs.length; index++) {
+        await Category.findByIdAndRemove(childs[index]._id);
+      }
+      await toggleHasChild(req.params.id);
+    }
+    return res.status(200).send("Successfully deleted");
+  } catch (error) {
+    return res.status(400).send("Some error occured");
+  }
 });
 
 module.exports = router;
