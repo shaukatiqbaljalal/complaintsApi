@@ -41,7 +41,7 @@ router.get("/getnotifications", authUser, async (req, res) => {
       })
         .sort({ createdAt: -1 })
         .limit(10);
-      console.log("admin - notifications", notifications);
+      // console.log("admin - notifications", notifications);
       if (!notifications) {
         return res.status(404).send("No notifications");
       }
