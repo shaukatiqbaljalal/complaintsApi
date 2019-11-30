@@ -9,7 +9,6 @@ const passwordGenrator = require("./../middleware/passwordGenerator");
 const readCsv = require("./../middleware/readCsv");
 const sendCsvToClient = require("./../common/sendCsv");
 const deleteFile = require("./../common/deleteFile");
-const getCategoryByName = require("./../common/categoriesHelper");
 const multer = require("multer");
 const encrypt = require("./../common/encrypt");
 const sendEmail = require("../common/sendEmail");
@@ -131,14 +130,6 @@ router.post(
 
       assignee.set("profilePicture", buff);
       assignee.set("profilePath", filePath);
-
-      // fs.writeFile(filePath, buff, err => {
-      //   req.body.files = filename;
-      //   if (err) return console.log(err, "err");
-
-      //   console.log("file is stored");
-
-      // });
     }
 
     if (req.file) {
@@ -329,24 +320,15 @@ router.put(
 
     if (req.body.responsibilities)
       req.body.responsibilities = JSON.parse(req.body.responsibilities);
+
     if (req.body.mobileFile) {
       let buff = Buffer.from(req.body.mobileFile, "base64");
-
       let filename = `cmp-${req.user._id}-${Date.now()}.png`;
       let filePath = path.join("profilePictures", filename);
-
-      // assignee.set("profilePicture", buff);
-      // assignee.set("profilePath", filePath);
       req.body.profilePath = filePath;
       req.body.profilePicture = buff;
-      // fs.writeFileSync(filePath, buff, err => {
-      //   req.body.files = filename;
-      //   if (err) return console.log(err, "err");
-
-      //   console.log("file is stored");
-      // });
-      // req.body.profilePicture = fs.readFileSync(filePath);
     }
+
     try {
       assignee = await Assignee.findByIdAndUpdate(req.params.id, req.body, {
         new: true
