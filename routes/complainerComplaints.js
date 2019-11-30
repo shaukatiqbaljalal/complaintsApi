@@ -83,18 +83,16 @@ router.post(
 
     // const { error } = validate(req.body);
     // if (error) return res.status(400).send(error.details[0].message);
-    let buff = Buffer.from(req.body.mobileFile, "base64");
     req.body.files = "";
     if (req.body.mobileFile) {
-      fs.writeFile(
-        `public/files/complaints/cmp-${req.complainer._id}-${Date.now()}.png`,
-        buff,
-        err => {
-          req.body.files = `cmp-${req.complainer._id}-${Date.now()}.png`;
-          if (err) return console.log(err, "err");
-          console.log("file is stored");
-        }
-      );
+      let buff = Buffer.from(req.body.mobileFile, "base64");
+      let filename = `cmp-${req.complainer._id}-${Date.now()}.png`;
+      let filePath = path.join("public", "files", "complaints", filename);
+      fs.writeFile(filePath, buff, err => {
+        req.body.files = filename;
+        if (err) return console.log(err, "err");
+        console.log("file is stored");
+      });
     }
 
     // Validate the attached file is allowed
@@ -303,7 +301,7 @@ router.get("/download/image/:id", async (req, res, next) => {
 });
 
 // fetching up complaint's picture
-router.get("/view/image", async (req, res, next) => {
+router.get("/view/image/:id", async (req, res, next) => {
   try {
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
