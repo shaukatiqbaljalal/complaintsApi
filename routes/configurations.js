@@ -9,7 +9,7 @@ router.get("/:id", async (req, res) => {
     companyId: req.params.id
   });
   if (!configuration) return res.status(404).send("No configuration object");
-  console.log(configuration);
+  // console.log(configuration);
   return res.send(configuration);
 });
 

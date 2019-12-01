@@ -32,7 +32,10 @@ const multerStorage = multer.diskStorage({
 
 // multer upload
 const upload = multer({
-  storage: multerStorage
+  storage: multerStorage,
+  limits: {
+    fieldSize: 8 * 1024 * 1024
+  }
 });
 
 // for getting all messages
@@ -56,9 +59,18 @@ router.post("/all", authUser, async (req, res) => {
 
 // for sending a message
 router.post("/", upload.single("messageBody"), authUser, async (req, res) => {
+  req.body.files = "";
+  if (req.body.mobileFile) {
+    let buff = Buffer.from(req.body.mobileFile, "base64");
+    let filename = `cmp-${req.user._id}-${Date.now()}.png`;
+    let filePath = path.join("public", "files", "messages", filename);
+    fs.writeFileSync(filePath, buff);
+    req.body.files = filename;
+  }
+
   let message;
+
   if (req.body.messageBody) {
-    console.log("req.body.messageBody");
     message = new Message({
       messageBody: req.body.messageBody,
       sender: req.body.sender,
@@ -67,9 +79,14 @@ router.post("/", upload.single("messageBody"), authUser, async (req, res) => {
   }
   // req.file? req.file.filename
   else if (req.file) {
-    console.log("req.file");
     message = new Message({
       messageBody: req.file.filename,
+      sender: req.body.sender,
+      receiver: req.body.receiver
+    });
+  } else if (req.body.mobileFile) {
+    message = new Message({
+      messageBody: req.body.files,
       sender: req.body.sender,
       receiver: req.body.receiver
     });
@@ -79,7 +96,8 @@ router.post("/", upload.single("messageBody"), authUser, async (req, res) => {
     io.getIO().emit("msg", message);
     res.send(message);
   } catch (error) {
-    return res.status(500).send("Some error occured", error);
+    console.log("in error");
+    return res.status(500).send("Some error occured");
   }
 });
 
