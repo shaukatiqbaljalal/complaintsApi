@@ -47,7 +47,10 @@ const multerFilter = (req, file, cb) => {
 // multer upload
 const upload = multer({
   storage: multerStorage,
-  fileFilter: multerFilter
+  fileFilter: multerFilter,
+  limits: {
+    fieldSize: 8 * 1024 * 1024
+  }
 });
 
 // router.get("/allUsers/:pageSize", async (req, res) => {
