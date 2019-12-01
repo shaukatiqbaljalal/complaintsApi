@@ -2,6 +2,7 @@ const { Configuration, validate } = require("../models/configuration");
 const express = require("express");
 const router = express.Router();
 const _ = require("lodash");
+const io = require("../socket");
 
 router.get("/:id", async (req, res) => {
   let configuration = await Configuration.findOne({
@@ -51,6 +52,7 @@ router.put("/:id", async (req, res) => {
       }
     );
     // console.log(configuration);
+    io.getIO().emit("config", configuration);
     res.send(configuration);
   } catch (error) {
     console.log(error);

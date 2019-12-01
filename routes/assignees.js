@@ -1,4 +1,6 @@
 const { Assignee, validate } = require("../models/assignee");
+const { Admin } = require("../models/admin");
+const { Notification } = require("../models/notification");
 const { Category } = require("../models/category");
 const express = require("express");
 const fs = require("fs");
@@ -14,6 +16,8 @@ const encrypt = require("./../common/encrypt");
 const sendEmail = require("../common/sendEmail");
 const { getEmailOptions } = require("../common/sendEmail");
 const authUser = require("./../middleware/authUser");
+const { Complaint } = require("../models/complaint");
+const io = require("../socket");
 
 // multer storageor
 const multerStorage = multer.diskStorage({
@@ -365,12 +369,74 @@ router.put("/change/chatwith/messages/:assigneeId/:id", async (req, res) => {
 //   res.status(200).send(assignees);
 // });
 
-router.delete("/:id", async (req, res) => {
-  const assignee = await Assignee.findByIdAndRemove(req.params.id);
+router.delete("/:id", authUser, async (req, res) => {
+  let assignedComplaints = await Complaint.find({
+    companyId: req.user.companyId,
+    assignedTo: req.params.id
+  });
+  console.log(assignedComplaints, "Assigned complaints");
 
+  for (let index = 0; index < assignedComplaints.length; index++) {
+    const complaint = assignedComplaints[index];
+    const assignees = await Assignee.find({
+      "responsibilities._id": complaint.category.toString(),
+      _id: { $ne: req.params.id }
+    }).select("name");
+    // console.log(assignees, "Assignees of category", complaint);
+    let adminAssignee = null;
+    let assignee;
+    if (assignees.length < 1) {
+      adminAssignee = await Admin.findOne({
+        companyId: req.user.companyId
+      });
+    } else if (assignees.length === 1) {
+      assignee = assignees[0];
+    } else {
+      let countArr = [];
+      for (let i = 0; i < assignees.length; i++) {
+        const a = assignees[i];
+        await Complaint.find({
+          assignedTo: a._id
+        }).count((err, count) => {
+          countArr.push(count);
+        });
+      }
+      let minIndex = countArr.indexOf(Math.min(...countArr));
+      if (minIndex >= 0) assignee = assignees[minIndex];
+    }
+    // console.log("Selected assignee or admin", assignee, adminAssignee);
+    let newAssigneeId = assignee ? assignee._id : adminAssignee._id;
+    let onModel = assignee ? "Assignee" : "Admin";
+    console.log(onModel);
+    let updated = await Complaint.findByIdAndUpdate(
+      complaint._id,
+      {
+        assignedTo: { _id: newAssigneeId },
+        onModel: onModel
+      },
+      { new: true }
+    ).populate("complainer", "_id name");
+    let notification = new Notification({
+      msg: `You have been assigned with new complaint`,
+      receivers: {
+        role: "",
+        id: updated.assignedTo
+      },
+      companyId: req.user.companyId,
+      complaintId: complaint._id
+    });
+    console.log("Updated complaint", updated);
+    await notification.save();
+    io.getIO().emit("complaints", {
+      action: "task assigned",
+      complaint: updated,
+      notification: notification
+    });
+  }
+
+  const assignee = await Assignee.findByIdAndRemove(req.params.id);
   if (!assignee)
     return res.status(404).send("Assignee with given ID Not Found.");
-
   res.status(200).send(assignee);
 });
 

@@ -11,8 +11,8 @@ router.get("/getnotifications", authUser, async (req, res) => {
     if (req.user.role === "complainer") {
       notifications = await Notification.find({ "receivers.id": req.user._id })
         .sort({ createdAt: -1 })
-        .limit(10);
-      console.log("complainer - notifications", notifications);
+        .limit(20);
+      // console.log("complainer - notifications", notifications);
       if (!notifications) {
         return res.status(404).send("No notifications");
       }
@@ -20,14 +20,14 @@ router.get("/getnotifications", authUser, async (req, res) => {
     }
 
     if (req.user.role === "assignee") {
-      console.log(req.user._id);
+      // console.log(req.user._id);
       notifications = await Notification.find({
         "receivers.id": req.user._id
         // companyId: req.user.companyId
       })
         .sort({ createdAt: -1 })
-        .limit(10);
-      console.log("assignee - notifications", notifications);
+        .limit(20);
+      // console.log("assignee - notifications", notifications);
       if (!notifications) {
         return res.status(404).send("No notifications");
       }
@@ -36,11 +36,17 @@ router.get("/getnotifications", authUser, async (req, res) => {
 
     if (req.user.role === "admin") {
       notifications = await Notification.find({
-        "receivers.role": "admin"
+        $or: [
+          { "receivers.id": req.user._id },
+          {
+            "receivers.role": "admin"
+          }
+        ]
+
         // companyId: req.user.companyId
       })
-        .sort({ createdAt: -1 })
-        .limit(10);
+        .sort({ _id: -1 })
+        .limit(20);
       // console.log("admin - notifications", notifications);
       if (!notifications) {
         return res.status(404).send("No notifications");

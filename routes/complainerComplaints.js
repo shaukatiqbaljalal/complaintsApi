@@ -159,13 +159,10 @@ router.post(
           countArr.push(count);
         });
       }
-      console.log(countArr, "Count array");
       let index = countArr.indexOf(Math.min(...countArr));
-      console.log("index", index);
       if (index >= 0) assignee = assignees[index];
       else assignee = assignees[0];
     }
-    console.log(assignee);
     // return;
     const complainer = await Complainer.findById(req.complainer._id);
     if (!complainer) return res.status(400).send("Invalid Complainer.");
