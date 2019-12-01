@@ -3,8 +3,8 @@ const nlp = require("compromise");
 
 module.exports = str => {
   const sentiment = new Sentiment();
+  console.log(sentiment.analyze(str), "String");
 
-  // 1
   let docForNlp = nlp(str)
     .sentences()
     .terms()
@@ -34,32 +34,15 @@ module.exports = str => {
   console.log("negative count", negCount);
   console.log("adverb count", adverbCount);
 
-  let severity = "Medium";
-  // for severity
-  if (negativeWords > positiveWords) {
-    console.log("negWords > posWords");
-    if (negCount > 2 && adverbCount > negCount) {
-      severity = "High";
-    } else if (adverbCount < negCount) {
-      severity = "Medium";
-    }
-  } else if (positiveWords > negativeWords) {
-    console.log("posWords > negWords");
-    if (adverbCount > negCount) severity = "Low";
-    else if (negCount > adverbCount) {
-      severity = "Medium";
-    }
-  } else {
-    console.log("posWords === negWords");
-
-    if (negCount > adverbCount) {
-      severity = "Medium";
-    } else if (adverbCount > negCount) {
-      severity = "High";
-    } else {
-      severity = "Low";
-    }
+  let severity = "Low";
+  if (w.score < -2) {
+    severity = "High";
+  } else if (w.score < 1) {
+    if (adverbCount > 1) severity = "High";
+    else severity = "Medium";
   }
 
+  //
+  console.log(severity);
   return severity;
 };

@@ -36,6 +36,7 @@ router.get("/getnotifications", authUser, async (req, res) => {
 
     if (req.user.role === "admin") {
       notifications = await Notification.find({
+        companyId: req.user.companyId,
         $or: [
           { "receivers.id": req.user._id },
           {

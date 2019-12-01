@@ -5,7 +5,7 @@ const authAssignee = require("../middleware/authAssignee");
 const io = require("../socket");
 const express = require("express");
 const router = express.Router();
-
+const authUser = require("../middleware/authUser");
 // Getting complaints of assignee -- Assignee
 router.get("/", authAssignee, async (req, res) => {
   console.log("get All complaints");
@@ -215,7 +215,7 @@ router.put("/:id", authAssignee, async (req, res) => {
       .populate("category", "name _id");
 
     io.getIO().emit("complaints", {
-      action: "status changed",
+      action: "reopened",
       complaint: newUp,
       notification: notification
     });
