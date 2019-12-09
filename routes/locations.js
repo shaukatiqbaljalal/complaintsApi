@@ -7,15 +7,15 @@ const express = require("express");
 const router = express.Router();
 const _ = require("lodash");
 
-// // getting assignee categories
-// router.get("/assignee/allCategories/all", authAssignee, async (req, res) => {
-//   // const assignee = await Assignee.findOne({ _id: req.assignee._id });
-//   // const categories = await Category.find({ _id: assignee.responsibilities._id });
+// getting assignee categories
+router.get("/assignee/allLocations/all", authAssignee, async (req, res) => {
+  // const assignee = await Assignee.findOne({ _id: req.assignee._id });
+  // const categories = await Category.find({ _id: assignee.responsibilities._id });
 
-//   const assignee = await Assignee.findOne({ _id: req.assignee._id });
+  const assignee = await Assignee.findOne({ _id: req.assignee._id });
 
-//   res.status(200).send(assignee.responsibilities);
-// });
+  res.status(200).send(assignee.responsibilities);
+});
 
 // // getting assignee categories
 // router.get("/assignee/:id", authAssignee, async (req, res) => {
@@ -28,7 +28,7 @@ const _ = require("lodash");
 
 router.get("/all", authUser, async (req, res) => {
   //   const categories = await Location.find({ companyId: req.assignee.companyId });
-  const locations = await Location.find({ companyId: req.assignee.companyId });
+  const locations = await Location.find({ companyId: req.user.companyId });
 
   if (!locations.length) return res.status(404).send("Locations not found");
   res.send(locations);
