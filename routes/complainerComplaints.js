@@ -3,6 +3,7 @@ const mime = require("mime");
 const path = require("path");
 const { Complaint, validate } = require("../models/complaint");
 const { Category } = require("../models/category");
+const { Location } = require("../models/location");
 const { Assignee } = require("../models/assignee");
 // const { Configuration } = require("../models/configuration");
 const { Complainer } = require("../models/complainer");
@@ -138,8 +139,12 @@ router.post(
     const category = await Category.findById(req.body.categoryId);
     if (!category) return res.status(400).send("Invalid category.");
 
+    const locationTags = await Location.findById(req.body.locationId);
+    if (!locationTags) return res.status(400).send("Invalid location.");
+
     const assignees = await Assignee.find({
-      "responsibilities._id": category._id.toString()
+      "responsibilities.category._id": category._id.toString(),
+      "responsibilities.location._id": locationTags._id.toString()
     }).select("name");
     // console.log('assignees',assignees);
     console.log("Assignees", assignees);
@@ -185,6 +190,9 @@ router.post(
     let complaint = new Complaint({
       category: {
         _id: category._id
+      },
+      locationTag: {
+        _id: locationTags._id
       },
       complainer: {
         _id: complainer._id

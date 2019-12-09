@@ -35,6 +35,11 @@ const Complaint = mongoose.model(
       ref: "Category",
       required: true
     },
+    locationTag: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Location",
+      required: true
+    },
     geolocation: {
       lat: { type: String },
       lng: { type: String }
@@ -110,6 +115,7 @@ function validateComplaint(complaint) {
       .min(5)
       .max(255),
     category: Joi.ObjectId().required(),
+    locationTag: Joi.ObjectId(),
     assignedTo: Joi.ObjectId(),
     companyId: Joi.ObjectId().required(),
 
