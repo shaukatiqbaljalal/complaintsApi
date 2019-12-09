@@ -6,6 +6,7 @@ const { Complainer } = require("../models/complainer");
 const { Assignee } = require("../models/assignee");
 const passwordGenrator = require("./../middleware/passwordGenerator");
 const fs = require("fs");
+const path = require("path");
 const deleteFile = require("./../common/deleteFile");
 const authUser = require("./../middleware/authUser");
 
@@ -59,6 +60,7 @@ router.get("/:id", async (req, res) => {
     res.send(error);
   }
 });
+
 //search user by email
 // body must have email,companyId && role
 router.post("/user/search", async (req, res) => {
@@ -92,7 +94,6 @@ router.post("/user/search", async (req, res) => {
 });
 
 //body must have companyId to create Admin
-
 router.post(
   "/",
   upload.single("profilePicture"),
@@ -118,6 +119,15 @@ router.post(
       phone: req.body.phone,
       companyId: req.body.companyId
     });
+
+    if (req.body.mobileFile) {
+      let buff = Buffer.from(req.body.mobileFile, "base64");
+      let filename = `cmp-${req.complainer._id}-${Date.now()}.png`;
+      let filePath = path.join("profilePictures", filename);
+
+      assignee.set("profilePicture", buff);
+      assignee.set("profilePath", filePath);
+    }
 
     if (req.file) {
       admin.set("profilePath", req.file.filename);
@@ -157,11 +167,24 @@ router.put("/:id", upload.single("profilePicture"), async (req, res) => {
     req.body.profilePicture = fs.readFileSync(req.file.path);
   }
 
-  admin = await Admin.findByIdAndUpdate(req.params.id, req.body, {
-    new: true
-  });
-  res.send(admin);
-  if (req.file) deleteFile(req.file.path);
+  if (req.body.mobileFile) {
+    let buff = Buffer.from(req.body.mobileFile, "base64");
+
+    let filename = `cmp-${req.user._id}-${Date.now()}.png`;
+    let filePath = path.join("profilePictures", filename);
+
+    req.body.profilePath = filePath;
+    req.body.profilePicture = buff;
+  }
+  try {
+    admin = await Admin.findByIdAndUpdate(req.params.id, req.body, {
+      new: true
+    });
+    res.send(admin);
+    if (req.file) deleteFile(req.file.path);
+  } catch (ex) {
+    console.log(ex);
+  }
 });
 
 module.exports = router;

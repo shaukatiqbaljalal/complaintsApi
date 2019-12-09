@@ -8,7 +8,7 @@ router.get("/:id", async (req, res) => {
     companyId: req.params.id
   });
   if (!configuration) return res.status(404).send("No configuration object");
-  console.log(configuration);
+  // console.log(configuration);
   return res.send(configuration);
 });
 
@@ -16,19 +16,18 @@ router.post("/", async (req, res) => {
   //company id is required
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
-  console.log(req.body);
+
   let configuration = await Configuration.find({
     companyId: req.body.companyId
   });
-  console.log(configuration, "Config");
+
   if (configuration.length > 0)
     return res.status(400).send("Configuration object already exists.");
 
   configuration = new Configuration(req.body);
-  console.log(configuration);
+
   try {
     await configuration.save();
-    console.log(configuration);
 
     res.send(configuration);
   } catch (error) {
@@ -51,7 +50,7 @@ router.put("/:id", async (req, res) => {
         new: true
       }
     );
-    console.log(configuration);
+    // console.log(configuration);
     res.send(configuration);
   } catch (error) {
     console.log(error);

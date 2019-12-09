@@ -1,7 +1,7 @@
 const encrypt = require("./../common/encrypt");
 const capitalizeFirstLetter = require("./../common/helper");
 const authUser = require("./../middleware/authUser");
-
+const path = require("path");
 const { Complainer, validate } = require("../models/complainer");
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 const passwordGenerator = require("./../middleware/passwordGenerator");
@@ -47,7 +47,10 @@ const multerFilter = (req, file, cb) => {
 // multer upload
 const upload = multer({
   storage: multerStorage,
-  fileFilter: multerFilter
+  fileFilter: multerFilter,
+  limits: {
+    fieldSize: 8 * 1024 * 1024
+  }
 });
 
 // router.get("/allUsers/:pageSize", async (req, res) => {
@@ -242,12 +245,25 @@ router.put(
     req.body.profilePath = profilePath;
     req.body.profilePicture = profilePicture;
     req.body.password = complainer.password;
-    console.log(req.body);
-    complainer = await Complainer.findByIdAndUpdate(req.params.id, req.body, {
-      new: true
-    });
-    res.send(complainer);
-    if (req.file) deleteFile(req.file.path);
+
+    if (req.body.mobileFile) {
+      let buff = Buffer.from(req.body.mobileFile, "base64");
+
+      let filename = `cmp-${req.user._id}-${Date.now()}.png`;
+      let filePath = path.join("profilePictures", filename);
+
+      req.body.profilePath = filePath;
+      req.body.profilePicture = buff;
+    }
+    try {
+      complainer = await Complainer.findByIdAndUpdate(req.params.id, req.body, {
+        new: true
+      });
+      res.send(complainer);
+      if (req.file) deleteFile(req.file.path);
+    } catch (ex) {
+      console.log(ex);
+    }
   }
 );
 

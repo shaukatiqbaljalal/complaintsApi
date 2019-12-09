@@ -83,6 +83,17 @@ router.post(
 
     // const { error } = validate(req.body);
     // if (error) return res.status(400).send(error.details[0].message);
+    req.body.files = "";
+    if (req.body.mobileFile) {
+      let buff = Buffer.from(req.body.mobileFile, "base64");
+      let filename = `cmp-${req.complainer._id}-${Date.now()}.png`;
+      let filePath = path.join("public", "files", "complaints", filename);
+      fs.writeFile(filePath, buff, err => {
+        req.body.files = filename;
+        if (err) return console.log(err, "err");
+        console.log("file is stored");
+      });
+    }
 
     // Validate the attached file is allowed
     if (req.file) {
@@ -181,13 +192,14 @@ router.post(
       assignedTo: {
         _id: assignee ? assignee._id : adminAssignee._id
       },
+      onModel: assignee ? "Assignee" : "Admin",
       assigned: assignee ? true : false,
       geolocation: req.body.latitude ? location : "",
       details: req.body.details,
       title: title,
       location: req.body.location,
       severity: severity,
-      files: req.file ? req.file.filename : "",
+      files: req.file ? req.file.filename : req.body.files,
       companyId: req.body.companyId,
       remarks: []
     });
@@ -289,7 +301,7 @@ router.get("/download/image/:id", async (req, res, next) => {
 });
 
 // fetching up complaint's picture
-router.get("/view/image", async (req, res, next) => {
+router.get("/view/image/:id", async (req, res, next) => {
   try {
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {

@@ -20,11 +20,9 @@ router.get("/assignee/allCategories/all", authAssignee, async (req, res) => {
 // getting assignee categories
 router.get("/assignee/:id", authAssignee, async (req, res) => {
   const assignee = await Assignee.findOne({ _id: req.params._id });
-
   const categories = await Category.find({
     _id: "assignee.responsibilities._id"
   });
-
   res.status(200).send(categories);
 });
 
@@ -113,7 +111,9 @@ router.post("/get/multiplePaths", authUser, async (req, res) => {
     const responsibility = responsibilities[index];
     let category = await Category.findById(responsibility._id);
     if (!category)
-      return res.status(400).send("Category with given id not found.");
+      return res
+        .status(400)
+        .send("Category with given id not found. " + responsibility._id);
     path.push(category);
     while (category.parentCategory) {
       category = await Category.findById({ _id: category.parentCategory });

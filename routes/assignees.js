@@ -2,6 +2,7 @@ const { Assignee, validate } = require("../models/assignee");
 const { Category } = require("../models/category");
 const express = require("express");
 const fs = require("fs");
+const path = require("path");
 const router = express.Router();
 const _ = require("lodash");
 const passwordGenrator = require("./../middleware/passwordGenerator");
@@ -46,7 +47,10 @@ const multerFilter = (req, file, cb) => {
 // multer upload
 const upload = multer({
   storage: multerStorage,
-  fileFilter: multerFilter
+  fileFilter: multerFilter,
+  limits: {
+    fieldSize: 8 * 1024 * 1024
+  }
 });
 
 // router.get("/allUsers/:pageSize", async (req, res) => {
@@ -122,10 +126,29 @@ router.post(
     if (req.body.responsibilities)
       req.body.responsibilities = JSON.parse(req.body.responsibilities);
     assignee = new Assignee(req.body);
+
+    if (req.body.mobileFile) {
+      let buff = Buffer.from(req.body.mobileFile, "base64");
+      let filename = `cmp-${req.complainer._id}-${Date.now()}.png`;
+      let filePath = path.join("profilePictures", filename);
+
+      assignee.set("profilePicture", buff);
+      assignee.set("profilePath", filePath);
+
+      // fs.writeFile(filePath, buff, err => {
+      //   req.body.files = filename;
+      //   if (err) return console.log(err, "err");
+
+      //   console.log("file is stored");
+
+      // });
+    }
+
     if (req.file) {
       assignee.set("profilePath", req.file.filename);
       assignee.set("profilePicture", fs.readFileSync(req.file.path));
     }
+
     console.log(assignee);
     // const salt = await bcrypt.genSalt(10);
     // assignee.password = await bcrypt.hash(assignee.password, salt);
@@ -280,6 +303,7 @@ router.put(
   authUser,
   upload.single("profilePicture"),
   async (req, res) => {
+    console.log(req.body);
     // const { error } = validate(req.body);
     // if (error) return res.status(400).send(error.details[0].message);
     let assignee = await Assignee.findById(req.params.id);
@@ -287,8 +311,6 @@ router.put(
       return res
         .status(404)
         .send("The assignee with the given ID was not found.");
-    console.log("req file", req.file);
-    console.log("req body", req.body);
     if (req.body.email) {
       let alreadyRegistered = await Assignee.findOne({
         email: req.body.email.toLowerCase(),
@@ -310,12 +332,34 @@ router.put(
 
     if (req.body.responsibilities)
       req.body.responsibilities = JSON.parse(req.body.responsibilities);
+    if (req.body.mobileFile) {
+      let buff = Buffer.from(req.body.mobileFile, "base64");
 
-    assignee = await Assignee.findByIdAndUpdate(req.params.id, req.body, {
-      new: true
-    });
-    res.send(assignee);
-    if (req.file) deleteFile(req.file.path);
+      let filename = `cmp-${req.user._id}-${Date.now()}.png`;
+      let filePath = path.join("profilePictures", filename);
+
+      // assignee.set("profilePicture", buff);
+      // assignee.set("profilePath", filePath);
+      req.body.profilePath = filePath;
+      req.body.profilePicture = buff;
+      // fs.writeFileSync(filePath, buff, err => {
+      //   req.body.files = filename;
+      //   if (err) return console.log(err, "err");
+
+      //   console.log("file is stored");
+      // });
+      // req.body.profilePicture = fs.readFileSync(filePath);
+    }
+    try {
+      assignee = await Assignee.findByIdAndUpdate(req.params.id, req.body, {
+        new: true
+      });
+      console.log(assignee);
+      res.send(assignee);
+      if (req.file) deleteFile(req.file.path);
+    } catch (error) {
+      console.log(error);
+    }
   }
 );
 

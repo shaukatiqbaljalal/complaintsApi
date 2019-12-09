@@ -20,7 +20,7 @@ const Message = mongoose.model(
 
     createdAt: {
       type: Date,
-      default: Date.now()
+      default: Date.now
     }
     // attachment: {
     //   type: Buffer

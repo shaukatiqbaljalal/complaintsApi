@@ -23,7 +23,12 @@ const Complaint = mongoose.model(
     },
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Assignee"
+      refPath: "onModel"
+    },
+    onModel: {
+      type: "String",
+      required: true,
+      enum: ["Admin", "Assignee"]
     },
     category: {
       type: mongoose.Schema.Types.ObjectId,
@@ -114,7 +119,8 @@ function validateComplaint(complaint) {
     status: Joi.string(),
     timeStamp: Joi.date(),
     geolocation: Joi.object(),
-    severity: Joi.string()
+    severity: Joi.string(),
+    onModel: Joi.string()
   };
 
   return Joi.validate(complaint, schema);
