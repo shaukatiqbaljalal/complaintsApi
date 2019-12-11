@@ -10,12 +10,10 @@ var transporter = nodeMailer.createTransport({
 });
 module.exports = function(options) {
   if (!options.from) options.from = config.get("emailServer").email;
-  transporter
+  return transporter
     .sendMail(options)
-    .then(result => {
-      console.log("success");
-    })
-    .catch(err => console.log(err));
+    .then(result => result)
+    .catch(err => err);
 };
 
 module.exports.getEmailOptions = function(

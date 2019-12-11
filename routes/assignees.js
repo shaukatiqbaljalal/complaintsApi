@@ -2,6 +2,7 @@ const { Assignee, validate } = require("../models/assignee");
 const { Admin } = require("../models/admin");
 const { Notification } = require("../models/notification");
 const { Category } = require("../models/category");
+const { Location } = require("../models/location");
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -178,6 +179,7 @@ router.post(
       res.status(400).send(req.error);
     }
     let errors = [];
+    let validatedUsers = [];
     let users = req.users;
 
     //create accounts for each entry
@@ -189,56 +191,55 @@ router.post(
 
       //This block only fetches given categories details and puts in user.responsibilities
       if (user.responsibilities) {
-        const categoryPathsArray = user.responsibilities.split("+");
-        console.log(categoryPathsArray, "All Paths");
-        //each path will be iterated through
-        for (let j = 0; j < categoryPathsArray.length; j++) {
-          const path = categoryPathsArray[j];
+        const responsibilitiesArray = user.responsibilities.split("+");
+        //each responsibility will be splitted down to actual category and location combination
+        // and pushed to responsibilities array
+        for (let j = 0; j < responsibilitiesArray.length; j++) {
+          const responsbility = responsibilitiesArray[j];
+          const categoryPath = responsbility.split(":")[0];
+          const locationPath = responsbility.split(":")[1];
+          let {
+            entity: category,
+            entityName: categoryName
+          } = await retrieveFromPath(
+            categoryPath,
+            "Category",
+            req.user.companyId
+          );
 
-          const categoriesInPath = path.split(">");
-          console.log("Certain Categories in path", categoriesInPath);
-          //this loop will find categories in the path and the last one in array will be assigned to user
-          let category = null;
-          let parentCategory = null;
-          let childs = [];
-          for (let i = 0; i < categoriesInPath.length; i++) {
-            const categoryName = categoriesInPath[i].trim();
-            console.log(categoryName, "Category names");
-
-            if (i == 0) {
-              category = await Category.findOne({
-                parentCategory: null,
-                name: categoryName
-              });
-              console.log("root category", category);
-            } else {
-              category = childs.find(c => c.name === categoryName);
-            }
-            //if  category with given name is not found
-            //break loop and go for the next path
-            //add message into user object as well i.e root category not found
-
-            if (!category) {
-              user.responsibilities = tempArray;
-              user.message = `The category named '${categoryName}' is not found, So the whole path is invalid and given responsbility is skipped.`;
-              console.log(user.message);
-              errors.push(user);
-              break;
-            }
-
-            console.log("Category found");
-            //If category found and it is last in path array
-            if (i === categoriesInPath.length - 1)
-              responsibilities.push(category);
-            else childs = await Category.find({ parentCategory: category._id });
-            parentCategory = category;
+          if (!category) {
+            user.responsibilities = tempArray;
+            user.message = `The category named '${categoryName}' is not found, So the whole path is invalid and given responsbility is skipped.`;
+            console.log(user.message);
+            errors.push(user);
+            break;
           }
-        }
 
-        user.responsibilities = responsibilities;
+          let {
+            entity: location,
+            entityName: locationName
+          } = await retrieveFromPath(
+            locationPath,
+            "Location",
+            req.user.companyId
+          );
+          if (!location) {
+            user.responsibilities = tempArray;
+            user.message = `The location named '${locationName}' is not found, So the whole path is invalid and given responsbility is skipped.`;
+            console.log(user.message);
+            errors.push(user);
+            break;
+          }
+          let obj = {
+            category: category,
+            location: location
+          };
+          responsibilities.push(obj);
+        }
       }
 
-      console.log("user after responsibilities", user);
+      user.responsibilities = responsibilities;
+      console.log(responsibilities, "Responsibilities");
       //validate user object. if error then skip the account creation
       const { error } = validate(user);
       let assignee = await Assignee.findOne({
@@ -256,7 +257,7 @@ router.post(
         errors.push(user);
         continue;
       }
-
+      user.password = encrypt(user.password);
       assignee = new Assignee(
         _.pick(user, [
           "name",
@@ -267,31 +268,79 @@ router.post(
           "companyId"
         ])
       );
-
-      const options = getEmailOptions(
-        assignee.email,
-        req.get("origin"),
-        assignee.password,
-        "Registration of Account Confirmation",
-        "assignee"
-      );
-
-      assignee.password = encrypt(assignee.password);
-      try {
-        await assignee.save();
-        sendEmail(options);
-      } catch (error) {
-        delete user.password;
-        delete user.companyId;
-        user.message = JSON.stringify(error);
-        errors.push(user);
-        continue;
-      }
+      validatedUsers.push(assignee);
     }
-    sendCsvToClient(req, res, errors);
-    if (req.file) deleteFile(req.file.path);
+
+    await Assignee.collection.insertMany(validatedUsers, (err, result) => {
+      if (err) return res.status(401).send(err);
+      else {
+        sendCsvToClient(req, res, errors);
+
+        // res.status(200).send("Successful");
+        console.log(result);
+        for (let index = 0; index < result.ops.length; index++) {
+          const assignee = result.ops[index];
+          const options = getEmailOptions(
+            assignee.email,
+            req.get("origin"),
+            assignee.password,
+            "Registration of Account Confirmation",
+            "assignee"
+          );
+
+          try {
+            sendEmail(options);
+          } catch (error) {
+            console.log("Email could not sent to :" + assignee.email);
+            // continue;
+          }
+          if (req.file) deleteFile(req.file.path);
+        }
+      }
+    });
   }
 );
+
+router.get("/path/checking", authUser, async (req, res) => {
+  let resp = await retrieveFromPath(
+    "Abdul>Shaukat iqbal",
+    "Location",
+    req.user.companyId
+  );
+  res.send(resp);
+});
+
+//A generic function
+//type identifies wheter it is Category or Location which you want to determine
+//this loop will find categories/locations in the path and the last one in array will be returned
+async function retrieveFromPath(path, type = "Category", companyId) {
+  const models = {
+    Category,
+    Location
+  };
+  const categoriesInPath = path.split(">");
+  let entity = null;
+  let parent = null;
+  let childs = [];
+
+  let entityName = categoriesInPath[0].trim();
+  entity = await models[type].findOne({
+    [`parent${type}`]: null,
+    name: entityName,
+    companyId: companyId
+  });
+  if (!entity) return { entity: null, entityName: entityName };
+  childs = await models[type].find({ [`parent${type}`]: entity._id });
+  parent = entity;
+  for (let i = 1; i < categoriesInPath.length; i++) {
+    entityName = categoriesInPath[i].trim();
+    entity = childs.find(c => c.name === entityName);
+    if (!entity) return { entity: null, entityName: entityName };
+    childs = await models[type].find({ [`parent${type}`]: entity._id });
+    parent = entity;
+  }
+  return { entity, entityName };
+}
 
 router.put(
   "/:id",
@@ -348,9 +397,6 @@ router.put(
     }
   }
 );
-
-
-
 
 router.put("/change/chatwith/messages/:assigneeId/:id", async (req, res) => {
   const assignee = await Assignee.findOne({ _id: req.params.assigneeId });

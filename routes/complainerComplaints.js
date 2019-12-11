@@ -50,11 +50,13 @@ const upload = multer({
 // complainer can find only his complaints -- Complainer
 router.get("/", authComplainer, async (req, res) => {
   const complaints = await Complaint.find({
-    complainer: req.complainer._id
+    complainer: req.complainer._id,
+    companyId: req.complainer.companyId
   })
     .populate("complainer", "name _id")
     .populate("assignedTo", "name _id")
-    .populate("category", "name _id");
+    .populate("category", "name _id")
+    .populate("locationTag", "name _id");
 
   // console.log(complaints);
 
@@ -225,7 +227,8 @@ router.get("/:id", async (req, res) => {
   })
     .populate("complainer", "name _id")
     .populate("assignedTo", "name _id")
-    .populate("category", "name _id");
+    .populate("category", "name _id")
+    .populate("locationTag", "name _id");
 
   if (!complaint)
     return res
@@ -274,7 +277,8 @@ router.post(
           .status(400)
           .send("The attached file is larger than allowed size.");
     }
-    console.log(req.body, "Body");
+
+    // console.log(req.body, "Body");
     let severity;
     if (!req.body.severity) {
       console.log("if");
@@ -318,20 +322,22 @@ router.post(
     } else {
       let countArr = [];
       for (let index = 0; index < assignees.length; index++) {
-        const a = assignees[index];
+        const assignee = assignees[index];
         let complaints = await Complaint.find({
-          assignedTo: a._id
+          assignedTo: assignee._id
         }).count((err, count) => {
           countArr.push(count);
         });
       }
+      console.log(countArr, "counts");
       let index = countArr.indexOf(Math.min(...countArr));
+      console.log(index, "index");
       if (index >= 0) assignee = assignees[index];
       else assignee = assignees[0];
     }
     // return;
-    const complainer = await Complainer.findById(req.complainer._id);
-    if (!complainer) return res.status(400).send("Invalid Complainer.");
+    // const complainer = await Complainer.findById(req.complainer._id);
+    // if (!complainer) return res.status(400).send("Invalid Complainer.");
 
     const title = capitalizeFirstLetter(req.body.title.toLowerCase());
 
@@ -353,7 +359,7 @@ router.post(
         _id: locationTags._id
       },
       complainer: {
-        _id: complainer._id
+        _id: req.complainer._id
       },
       assignedTo: {
         _id: assignee ? assignee._id : adminAssignee._id
@@ -383,11 +389,11 @@ router.post(
 
       await complaint.save();
       await notification.save();
-
       let newUp = await Complaint.findById(complaint._id)
         .populate("complainer", "name _id")
         .populate("assignedTo", "name _id")
-        .populate("category", "name _id");
+        .populate("category", "name _id")
+        .populate("locationTag", "name _id");
 
       io.getIO().emit("complaints", {
         action: "new complaint",

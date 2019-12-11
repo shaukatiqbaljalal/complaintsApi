@@ -17,15 +17,6 @@ router.get("/assignee/allLocations/all", authAssignee, async (req, res) => {
   res.status(200).send(assignee.responsibilities);
 });
 
-// // getting assignee categories
-// router.get("/assignee/:id", authAssignee, async (req, res) => {
-//   const assignee = await Assignee.findOne({ _id: req.params._id });
-//   const categories = await Category.find({
-//     _id: "assignee.responsibilities._id"
-//   });
-//   res.status(200).send(categories);
-// });
-
 router.get("/all", authUser, async (req, res) => {
   //   const categories = await Location.find({ companyId: req.assignee.companyId });
   const locations = await Location.find({ companyId: req.user.companyId });
@@ -48,7 +39,7 @@ router.get("/childsOf/:id", async (req, res) => {
   res.send(childs);
 });
 
-// getting one category detail
+// getting one location detail
 router.get("/:id", async (req, res) => {
   const location = await Location.findById(req.params.id);
 
@@ -60,7 +51,7 @@ router.get("/:id", async (req, res) => {
   res.send(location);
 });
 
-// getting category which has specific parent
+// getting location which has specific parent
 router.get("/specific/parent/:id", async (req, res) => {
   const location = await Location.findOne({ parentLocation: req.params.id });
 
@@ -82,7 +73,7 @@ router.get("/specific/noparent", authUser, async (req, res) => {
   res.send(locations);
 });
 
-// getting parent category
+// getting parent location
 router.get("/find/parent/location/:id", async (req, res) => {
   const location = await Location.findOne({ _id: req.params.id });
 
@@ -165,14 +156,14 @@ async function toggleHasChild(id) {
 
 // creating locations
 router.post("/", authUser, async (req, res) => {
-  req.body.companyId = req.user.companyId;
+  if (!req.body.companyId) req.body.companyId = req.user.companyId;
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
 
   //Front end pay implementation is tarah ki hai k drop and down walay part main jab main root categories ka
   //sibling banata hun tou parent id null hoti hai q k root cats ka koi parent ni
-  //tou database main hamesha aik root category rahay gi jis ki id compare ki jae
-  //if it is equal then make the category root of company of req.user.companyId
+  //tou database main hamesha aik root location rahay gi jis ki id compare ki jae
+  //if it is equal then make the location root of company of req.user.companyId
 
   let rootLocation = await Location.findOne({ name: "root", companyId: null });
   console.log("rootLocation", rootLocation);
@@ -183,7 +174,7 @@ router.post("/", authUser, async (req, res) => {
   }
   let siblingsList,
     parentLocation = null;
-  //check is there parent category which is specified
+  //check is there parent location which is specified
   if (req.body.parentLocation) {
     console.log("inside");
     parentLocation = await _findLocationById(req.body.parentLocation);
@@ -214,7 +205,7 @@ router.post("/", authUser, async (req, res) => {
   try {
     await location.save();
     res.send(location);
-    //update has child of parent of new category
+    //update has child of parent of new location
     if (parentLocation && !parentLocation.hasChild) {
       const updatedparentLocation = await toggleHasChild(parentLocation._id);
       console.log("Updated Parent Location", updatedparentLocation);
@@ -243,18 +234,18 @@ router.post("/bulk", async (req, res) => {
     return res.status(400).send("No Locations in the body");
   let ids = [];
   let docs = [];
-  let index = locations.findIndex(c => c.name === "General");
+  let index = locations.findIndex(c => c.name === "Other");
   if (index >= 0) locations.splice(index, 1);
-  //if there is no category in DB
+  //if there is no location in DB
   let locationsInDb = await Location.find({ companyId: req.body.companyId });
-  let generaIndex = locationsInDb.findIndex(
-    c => c.name === "General" && !c.parentLocation
+  let otherIndex = locationsInDb.findIndex(
+    c => c.name === "Other" && !c.parentLocation
   );
 
-  if (generaIndex < 0) {
+  if (otherIndex < 0) {
     locations.push({
       id: locations.length + 1,
-      name: "General",
+      name: "Other",
       hasChild: false,
       companyId: req.body.companyId
     });
@@ -315,7 +306,7 @@ router.put("/:id", authUser, async (req, res) => {
   console.log(req.body, "Before");
   const { error } = validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
-  //find category
+  //find location
   let location = await Location.findOne({ _id: req.params.id });
   if (!location)
     return res.status(404).send("No Location with given Id found.");
@@ -346,7 +337,7 @@ router.put("/:id", authUser, async (req, res) => {
       console.log("Old parent", oldParent);
     }
   }
-  //check for valid parent category
+  //check for valid parent location
   if (req.body.parentLocation && req.body.parentLocation === req.params.id) {
     return res.status(400).send("Location cannot be its own Parent.");
   }
@@ -375,15 +366,15 @@ router.put("/:id", authUser, async (req, res) => {
 // router.post("/sentiment/selection", authUser, async (req, res) => {
 //   console.log(req.body);
 //   const cat = categorySelection(req.body.details);
-//   const category = await Category.findOne({
+//   const location = await Category.findOne({
 //     name: cat,
 //     companyId: req.user.companyId
 //   });
 
-//   if (!category) {
+//   if (!location) {
 //     return res.status(404).send("No Category found");
 //   }
-//   res.send(category);
+//   res.send(location);
 // });
 
 router.delete("/:id", async (req, res) => {

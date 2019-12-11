@@ -17,8 +17,9 @@ router.get("/", authAdmin, async (req, res) => {
   const complaints = await Complaint.find({ companyId: req.admin.companyId })
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
-    .populate("category", "name _id");
-
+    .populate("category", "name _id")
+    .populate("locationTag", "name _id");
+  console.log(complaints);
   if (!complaints) return res.status(404).send("No complaints was found.");
 
   res.send(complaints);
@@ -32,7 +33,8 @@ router.get("/assigned-complaints", authAdmin, async (req, res) => {
   })
     .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
-    .populate("category", "name _id");
+    .populate("category", "name _id")
+    .populate("locationTag", "name _id");
 
   if (!complaints) return res.status(404).send("No complaints was found.");
 
@@ -174,9 +176,10 @@ router.put(
   authAdmin,
   async (req, res) => {
     const complaint = await Complaint.findById(req.params.complaintId)
-      .populate("assignedTo", "name _id")
       .populate("complainer", "name _id")
-      .populate("category", "name _id");
+      .populate("assignedTo", "name _id")
+      .populate("category", "name _id")
+      .populate("locationTag", "name _id");
 
     complaint.assigned = true;
     complaint.assignedTo = { _id: req.params.assigneeId };
@@ -197,9 +200,10 @@ router.put(
       console.log("Task Assigned - admin");
 
       const upcmp = await Complaint.findById(req.params.complaintId)
-        .populate("assignedTo", "name _id")
         .populate("complainer", "name _id")
-        .populate("category", "name _id");
+        .populate("assignedTo", "name _id")
+        .populate("category", "name _id")
+        .populate("locationTag", "name _id");
 
       io.getIO().emit("complaints", {
         action: "task assigned",

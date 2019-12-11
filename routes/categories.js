@@ -133,7 +133,6 @@ router.get("/siblingsOf/:id", async (req, res) => {
     parentCategory: category.parentCategory,
     companyId: category.companyId
   });
-
   res.send(siblings);
 });
 
