@@ -239,9 +239,10 @@ router.post(
       }
 
       user.responsibilities = responsibilities;
-      console.log(responsibilities, "Responsibilities");
+      // console.log(responsibilities, "Responsibilities");
       //validate user object. if error then skip the account creation
       const { error } = validate(user);
+
       let assignee = await Assignee.findOne({
         email: user.email,
         companyId: user.companyId
@@ -271,8 +272,12 @@ router.post(
       validatedUsers.push(assignee);
     }
 
-    await Assignee.collection.insertMany(validatedUsers, (err, result) => {
-      if (err) return res.status(401).send(err);
+    if (!validatedUsers.length) {
+      return sendCsvToClient(req, res, errors);
+    }
+
+    Assignee.collection.insertMany(validatedUsers, (err, result) => {
+      if (err) return res.send(err);
       else {
         sendCsvToClient(req, res, errors);
 

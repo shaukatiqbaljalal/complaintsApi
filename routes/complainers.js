@@ -66,7 +66,9 @@ const upload = multer({
 // });
 
 router.get("/all", authUser, async (req, res) => {
-  const complainers = await Complainer.find({ companyId: req.user.companyId });
+  const complainers = await Complainer.find({
+    companyId: req.user.companyId
+  });
 
   if (!complainers) return res.status(404).send("There is no complainer.");
 
