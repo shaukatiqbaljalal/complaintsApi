@@ -399,6 +399,19 @@ router.delete("/:id", async (req, res) => {
   return res.status(400).send("You cannot delete this Location");
 });
 
+router.post("/delete/many", async (req, res) => {
+  console.log("Delete many called");
+  let locationsToBeDeleted = req.body.locations;
+  console.log(locationsToBeDeleted, "Ids sent to delete");
+  Location.deleteMany({ _id: [...locationsToBeDeleted] }, function(
+    err,
+    result
+  ) {
+    if (err) return res.send(err);
+    if (result) res.send(result);
+  });
+});
+
 router.delete("/childsOf/:id", async (req, res) => {
   try {
     let childs = await childsOf(req.params.id);

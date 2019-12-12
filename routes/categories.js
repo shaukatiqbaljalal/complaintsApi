@@ -418,5 +418,16 @@ router.delete("/childsOf/:id", async (req, res) => {
     return res.status(400).send("Some error occured");
   }
 });
-
+router.post("/delete/many", async (req, res) => {
+  console.log("Delete many called");
+  let categoriesToBeDeleted = req.body.categories;
+  console.log(categoriesToBeDeleted, "Ids sent to delete");
+  Category.deleteMany({ _id: [...categoriesToBeDeleted] }, function(
+    err,
+    result
+  ) {
+    if (err) return res.send(err);
+    if (result) res.send(result);
+  });
+});
 module.exports = router;

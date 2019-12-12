@@ -43,8 +43,11 @@ const multerStorage = multer.diskStorage({
 
 // multer upload
 const upload = multer({
-  storage: multerStorage
+  storage: multerStorage,
   // fileFilter: multerFilter
+  limits: {
+    fieldSize: 8 * 1024 * 1024
+  }
 });
 
 // complainer can find only his complaints -- Complainer
@@ -312,7 +315,6 @@ router.post(
       "responsibilities.location._id": locationTags._id.toString()
     }).select("name");
     // console.log('assignees',assignees);
-    console.log("Assignees", assignees);
     let adminAssignee = null;
     let assignee;
     if (assignees.length < 1) {
@@ -348,8 +350,6 @@ router.post(
         lng: req.body.longitude
       };
     }
-
-    console.log(req.body);
 
     let complaint = new Complaint({
       category: {
