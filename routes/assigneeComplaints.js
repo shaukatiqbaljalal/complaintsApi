@@ -13,9 +13,10 @@ router.get("/", authAssignee, async (req, res) => {
     assignedTo: req.assignee._id,
     spam: false
   })
-    .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
-    .populate("category", "name _id");
+    .populate("assignedTo", "name _id")
+    .populate("category", "name _id")
+    .populate("locationTag", "name _id");
 
   if (!complaints)
     return res
@@ -31,9 +32,10 @@ router.get("/:id", authAssignee, async (req, res) => {
     _id: req.params.id,
     assignedTo: req.assignee._id
   })
-    .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
-    .populate("category", "name _id");
+    .populate("assignedTo", "name _id")
+    .populate("category", "name _id")
+    .populate("locationTag", "name _id");
   if (!complaint)
     return res
       .status(404)
@@ -54,9 +56,10 @@ router.get("/assignee/spam/complaints", authAssignee, async (req, res) => {
 // assignee drop responsibility
 router.put("/drop/:id", authAssignee, async (req, res) => {
   let complaint = await Complaint.findById(req.params.id)
-    .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
-    .populate("category", "name _id");
+    .populate("assignedTo", "name _id")
+    .populate("category", "name _id")
+    .populate("locationTag", "name _id");
 
   if (!complaint)
     return res.status(404).send("Complaint with given ID was not found.");
@@ -90,9 +93,10 @@ router.put("/drop/:id", authAssignee, async (req, res) => {
     await complaint.save();
     await notification.save();
     complaint = await Complaint.findById(req.params.id)
-      .populate("assignedTo", "name _id")
       .populate("complainer", "name _id")
-      .populate("category", "name _id");
+      .populate("assignedTo", "name _id")
+      .populate("category", "name _id")
+      .populate("locationTag", "name _id");
     io.getIO().emit("complaints", {
       action: "drop",
       complaint: complaint,
@@ -149,9 +153,10 @@ router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
   // const complaint = await Complaint.findOne({ _id: req.params.id });
 
   const complaint = await Complaint.findById(req.params.id)
-    .populate("assignedTo", "name _id")
     .populate("complainer", "name _id")
-    .populate("category", "name _id");
+    .populate("assignedTo", "name _id")
+    .populate("category", "name _id")
+    .populate("locationTag", "name _id");
 
   let remarks = complaint.remarks;
   let newRemarks = `From: ${complaint.status} To: ${req.params.status}> ${req.params.remarks}`;
@@ -172,9 +177,10 @@ router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
     await complaint.save();
     await notification.save();
     let newUp = await Complaint.findById(req.params.id)
-      .populate("assignedTo", "name _id")
       .populate("complainer", "name _id")
-      .populate("category", "name _id");
+      .populate("assignedTo", "name _id")
+      .populate("category", "name _id")
+      .populate("locationTag", "name _id");
     io.getIO().emit("complaints", {
       action: "status changed",
       complaint: newUp,
@@ -195,9 +201,10 @@ router.put("/:id", authAssignee, async (req, res) => {
 
   try {
     const complaint = await Complaint.findByIdAndUpdate(req.params.id, req.body)
-      .populate("assignedTo", "name _id")
       .populate("complainer", "name _id")
-      .populate("category", "name _id");
+      .populate("assignedTo", "name _id")
+      .populate("category", "name _id")
+      .populate("locationTag", "name _id");
 
     let notification = new Notification({
       msg: "Complaint is Re-opened",
@@ -210,9 +217,10 @@ router.put("/:id", authAssignee, async (req, res) => {
     });
 
     let newUp = await Complaint.findById(req.params.id)
-      .populate("assignedTo", "name _id")
       .populate("complainer", "name _id")
-      .populate("category", "name _id");
+      .populate("assignedTo", "name _id")
+      .populate("category", "name _id")
+      .populate("locationTag", "name _id");
 
     io.getIO().emit("complaints", {
       action: "reopened",

@@ -16,6 +16,7 @@ const higherAuthorities = require("./routes/higherAuthorities");
 const configuration = require("./routes/configurations");
 const attachments = require("./routes/attachments");
 const categories = require("./routes/categories");
+const locations = require("./routes/locations");
 const messages = require("./routes/messages");
 const emails = require("./routes/emails");
 
@@ -95,6 +96,10 @@ app.use("/api/admin-complaints", adminComplaints);
 
 // for getting all categories
 app.use("/api/categories", categories);
+
+// for getting all locations
+app.use("/api/locations", locations);
+
 //for sample csvs
 app.use("/api/samplecsv", samplecsv);
 
