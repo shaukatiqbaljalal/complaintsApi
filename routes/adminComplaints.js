@@ -24,6 +24,32 @@ router.get("/", authAdmin, async (req, res) => {
   res.send(complaints);
 });
 
+// Paginated
+// Getting complaints of Admin -- Admin
+router.get("/paginated", authAdmin, async (req, res) => {
+  let page = +req.query.currentPage || 1;
+  let pageSize = +req.query.pageSize;
+
+  const complaintsCount = await Complaint.find({
+    companyId: req.admin.companyId
+  }).count();
+
+  const complaints = await Complaint.find({ companyId: req.admin.companyId })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .populate("assignedTo", "name _id")
+    .populate("complainer", "name _id")
+    .populate("category", "name _id");
+
+  if (!complaints) return res.status(404).send("No complaints was found.");
+
+  console.log(complaints.length);
+
+  res.header("itemsCount", complaintsCount);
+  res.header("access-control-expose-headers", "itemsCount");
+  res.send(complaints);
+});
+
 // Getting assigned complaints of Admin -- Admin
 router.get("/assigned-complaints", authAdmin, async (req, res) => {
   const complaints = await Complaint.find({
@@ -36,6 +62,36 @@ router.get("/assigned-complaints", authAdmin, async (req, res) => {
 
   if (!complaints) return res.status(404).send("No complaints was found.");
 
+  res.send(complaints);
+});
+
+// Paginated
+// Getting assigned complaints of Admin -- Admin
+router.get("/paginated/assigned-complaints", authAdmin, async (req, res) => {
+  let page = +req.query.currentPage || 1;
+  let pageSize = +req.query.pageSize;
+
+  const complaintsCount = await Complaint.find({
+    companyId: req.admin.companyId,
+    assignedTo: req.admin._id
+  }).count();
+
+  const complaints = await Complaint.find({
+    companyId: req.admin.companyId,
+    assignedTo: req.admin._id
+  })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .populate("assignedTo", "name _id")
+    .populate("complainer", "name _id")
+    .populate("category", "name _id");
+
+  if (!complaints) return res.status(404).send("No complaints was found.");
+
+  console.log(complaints.length);
+
+  res.header("itemsCount", complaintsCount);
+  res.header("access-control-expose-headers", "itemsCount");
   res.send(complaints);
 });
 

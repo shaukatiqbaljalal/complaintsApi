@@ -50,14 +50,39 @@ const upload = multer({
 // complainer can find only his complaints -- Complainer
 router.get("/", authComplainer, async (req, res) => {
   const complaints = await Complaint.find({
-    complainer: req.complainer._id
+    complainer: req.complainer._id,
+    companyId: req.complainer.companyId
   })
     .populate("complainer", "name _id")
     .populate("assignedTo", "name _id")
     .populate("category", "name _id");
 
-  // console.log(complaints);
+  res.send(complaints);
+});
 
+// Paginated
+// complainer can find only his complaints -- Complainer
+router.get("/paginated", authComplainer, async (req, res) => {
+  let page = +req.query.currentPage || 1;
+  let pageSize = +req.query.pageSize;
+
+  const complaintsCount = await Complaint.find({
+    complainer: req.complainer._id,
+    companyId: req.complainer.companyId
+  }).count();
+
+  const complaints = await Complaint.find({
+    complainer: req.complainer._id
+  })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .populate("complainer", "name _id")
+    .populate("assignedTo", "name _id")
+    .populate("category", "name _id");
+  console.log(complaints.length);
+
+  res.header("itemsCount", complaintsCount);
+  res.header("access-control-expose-headers", "itemsCount");
   res.send(complaints);
 });
 

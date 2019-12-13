@@ -25,6 +25,37 @@ router.get("/", authAssignee, async (req, res) => {
   res.send(complaints);
 });
 
+// Paginated
+// Getting complaints of assignee -- Assignee
+router.get("/paginated", authAssignee, async (req, res) => {
+  let page = +req.query.currentPage || 1;
+  let pageSize = +req.query.pageSize;
+
+  const complaintsCount = await Complaint.find({
+    assignedTo: req.assignee._id,
+    spam: false
+  }).count();
+
+  const complaints = await Complaint.find({
+    assignedTo: req.assignee._id,
+    spam: false
+  })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .populate("assignedTo", "name _id")
+    .populate("complainer", "name _id")
+    .populate("category", "name _id");
+
+  if (!complaints)
+    return res
+      .status(404)
+      .send("complaints with given Assignee was not found.");
+
+  res.header("itemsCount", complaintsCount);
+  res.header("access-control-expose-headers", "itemsCount");
+  res.send(complaints);
+});
+
 // assignee drop responsibility
 router.put("/drop/:id", authAssignee, async (req, res) => {
   let complaint = await Complaint.findById(req.params.id)

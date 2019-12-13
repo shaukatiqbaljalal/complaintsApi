@@ -72,6 +72,26 @@ router.get("/all", authUser, async (req, res) => {
   res.status(200).send(assignees);
 });
 
+// paginated
+router.get("/all/paginated", authUser, async (req, res) => {
+  let page = +req.query.currentPage || 1;
+  let pageSize = +req.query.pageSize;
+
+  const assigneesCount = await Assignee.find({
+    companyId: req.user.companyId
+  }).count();
+
+  const assignees = await Assignee.find({ companyId: req.user.companyId })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize);
+
+  if (!assignees) return res.status(404).send("There are no Assignees.");
+
+  res.header("itemsCount", assigneesCount);
+  res.header("access-control-expose-headers", "itemsCount");
+  res.status(200).send(assignees);
+});
+
 //getting assignee based on his/her _id
 router.get("/me/:id", authUser, async (req, res) => {
   const assignees = await Assignee.findOne({

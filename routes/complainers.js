@@ -73,6 +73,24 @@ router.get("/all", authUser, async (req, res) => {
   res.status(200).send(complainers);
 });
 
+// paginated
+router.get("/all/paginated", authUser, async (req, res) => {
+  let page = +req.query.currentPage || 1;
+  let pageSize = +req.query.pageSize;
+
+  const complainersCount = await Complainer.find({
+    companyId: req.user.companyId
+  }).count();
+
+  const complainers = await Complainer.find({ companyId: req.user.companyId });
+
+  if (!complainers) return res.status(404).send("There is no complainer.");
+
+  res.header("itemsCount", complainersCount);
+  res.header("access-control-expose-headers", "itemsCount");
+  res.status(200).send(complainers);
+});
+
 router.get("/count/complainers", authUser, async (req, res) => {
   const complainers = await Complainer.find({ companyId: req.user.companyId });
   let months = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
