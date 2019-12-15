@@ -6,6 +6,7 @@ const {
   executePagination,
   prepareFilter
 } = require("../middleware/pagination");
+const { calculateDays } = require("./../common/helper");
 const { Assignee } = require("../models/assignee");
 const { Notification } = require("../models/notification");
 const authAdmin = require("../middleware/authAdmin");
@@ -51,10 +52,14 @@ router.get("/segments/count", authAdmin, async (req, res, next) => {
   let spamComplaints = [];
 
   complaints.forEach(complaint => {
-    if (complaint.spam) spamComplaints.push(complaint);
+    if (complaint.spam) {
+      spamComplaints.push(complaint);
+      return;
+    }
     let days = calculateDays(complaint.timeStamp) + 1;
-    if (days > delayedDays) {
+    if (days > delayedDays && complaint.status === "in-progress") {
       delayed.push(complaint);
+      return;
     }
     if (complaint.feedbackTags) {
       if (complaint.feedbackTags === "satisfied")
@@ -71,13 +76,7 @@ router.get("/segments/count", authAdmin, async (req, res, next) => {
     totalComplaints: complaints.length
   });
 });
-calculateDays = stamp => {
-  var date = new Date(stamp);
-  let d = new Date();
-  let days =
-    Math.ceil(Math.abs(d.getTime() - date.getTime()) / (1000 * 3600 * 24)) - 1;
-  return days;
-};
+
 // Getting assigned complaints of Admin -- Admin
 router.get("/assigned-complaints", authAdmin, async (req, res) => {
   const complaints = await Complaint.find({
