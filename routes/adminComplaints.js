@@ -1,6 +1,7 @@
 const { Complaint } = require("../models/complaint");
 const authUser = require("../middleware/authUser");
 const _ = require("lodash");
+const ObjectId = require("mongodb").ObjectID;
 const { Assignee } = require("../models/assignee");
 const { Notification } = require("../models/notification");
 const authAdmin = require("../middleware/authAdmin");
@@ -26,29 +27,69 @@ router.get("/", authAdmin, async (req, res) => {
 
 // Paginated
 // Getting complaints of Admin -- Admin
-router.get("/paginated", authAdmin, async (req, res) => {
-  let page = +req.query.currentPage || 1;
-  let pageSize = +req.query.pageSize;
+router.get(
+  "/paginated/:pageNo/:pageSize",
+  authAdmin,
+  async (req, res, next) => {
+    let { searchBy, searchKeyword } = req.query;
+    let filter = { companyId: ObjectId(req.admin.companyId) };
+    if (searchBy && searchKeyword) {
+      regex = new RegExp(escapeRegex(searchBy), "gi");
+      filter[searchBy] = regex;
+    }
+    req.body.filter = filter;
 
-  const complaintsCount = await Complaint.find({
-    companyId: req.admin.companyId
-  }).count();
+    next();
+  },
+  executePagination(Complaint)
+);
 
-  const complaints = await Complaint.find({ companyId: req.admin.companyId })
-    .skip((page - 1) * pageSize)
-    .limit(pageSize)
-    .populate("assignedTo", "name _id")
-    .populate("complainer", "name _id")
-    .populate("category", "name _id");
+function executePagination(Modal) {
+  return async (req, res, next) => {
+    let pageNum = +req.params.currentPage || 1;
+    let pageSize = +req.params.pageSize || 10;
+    try {
+      let { itemsCount, items } = await paginate(
+        pageSize,
+        pageNum,
+        Modal,
+        req.body.filter
+      );
 
-  if (!complaints) return res.status(404).send("No complaints was found.");
+      res.header("itemsCount", itemsCount);
+      res.header("access-control-expose-headers", "itemsCount");
+      res.send(items);
+    } catch (error) {
+      return res.status(500).send(error);
+    }
+  };
+}
 
-  console.log(complaints.length);
+async function paginate(pageSize, pageNum, Modal, filter) {
+  let result = {
+    items: [],
+    itemsCount: 0
+  };
+  try {
+    console.log(filter);
+    const itemsCount = await Modal.find(filter).count();
+    if (!itemsCount) return result;
 
-  res.header("itemsCount", complaintsCount);
-  res.header("access-control-expose-headers", "itemsCount");
-  res.send(complaints);
-});
+    const items = await Modal.find(filter)
+      .skip((pageNum - 1) * pageSize)
+      .limit(pageSize)
+      .populate("assignedTo", "name _id")
+      .populate("complainer", "name _id")
+      .populate("category", "name _id");
+
+    return {
+      items,
+      itemsCount
+    };
+  } catch (error) {
+    return error;
+  }
+}
 
 // Getting assigned complaints of Admin -- Admin
 router.get("/assigned-complaints", authAdmin, async (req, res) => {
