@@ -1,6 +1,6 @@
 {
   "jwtPrivateKey": "quickresponse_jwtPrivateKey",
-  "dabUri": "mongodb://localhost",
+  "dbUri": "mongodb://localhost/QuickResponse",
   "emailServer": {
     "email": "crunchtech300@gmail.com",
     "password": "23crunch23"
