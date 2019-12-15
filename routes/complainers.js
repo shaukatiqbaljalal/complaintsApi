@@ -15,7 +15,10 @@ const fs = require("fs");
 const multer = require("multer");
 const { getEmailOptions } = require("../common/sendEmail");
 const sendEmail = require("../common/sendEmail");
-
+const {
+  executePagination,
+  prepareFilter
+} = require("../middleware/pagination");
 // multer storage
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -74,22 +77,12 @@ router.get("/all", authUser, async (req, res) => {
 });
 
 // paginated
-router.get("/all/paginated", authUser, async (req, res) => {
-  let page = +req.query.currentPage || 1;
-  let pageSize = +req.query.pageSize;
-
-  const complainersCount = await Complainer.find({
-    companyId: req.user.companyId
-  }).count();
-
-  const complainers = await Complainer.find({ companyId: req.user.companyId });
-
-  if (!complainers) return res.status(404).send("There is no complainer.");
-
-  res.header("itemsCount", complainersCount);
-  res.header("access-control-expose-headers", "itemsCount");
-  res.status(200).send(complainers);
-});
+router.get(
+  "/paginated/:pageNo/:pageSize",
+  authUser,
+  prepareFilter,
+  executePagination(Complainer)
+);
 
 router.get("/count/complainers", authUser, async (req, res) => {
   const complainers = await Complainer.find({ companyId: req.user.companyId });

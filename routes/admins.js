@@ -17,6 +17,10 @@ const _ = require("lodash");
 const sendEmail = require("../common/sendEmail");
 const { getEmailOptions } = require("../common/sendEmail");
 const multer = require("multer");
+const {
+  executePagination,
+  prepareFilter
+} = require("../middleware/pagination");
 // multer storage
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -60,35 +64,26 @@ router.get("/:id", async (req, res) => {
     res.send(error);
   }
 });
+router.get(
+  "/paginated/:pageNo/:pageSize",
+  authUser,
+  prepareFilter,
+  executePagination(Admin)
+);
 
 //search user by email
 // body must have email,companyId && role
 router.post("/user/search", async (req, res) => {
-  console.log(req.body);
-  let user;
-  switch (req.body.role) {
-    case "admin":
-      user = await Admin.findOne({
-        email: req.body.email,
-        companyId: req.body.companyId
-      });
-      break;
-    case "complainer":
-      user = await Complainer.findOne({
-        email: req.body.email,
-        companyId: req.body.companyId
-      });
-      break;
-    case "assignee":
-      user = await Assignee.findOne({
-        email: req.body.email,
-        companyId: req.body.companyId
-      });
-      break;
-    default:
-      return res.status(400).send("Role must be complaine,admin or assignee");
-  }
-
+  let Modal = {
+    complainer: Complainer,
+    admin: Admin,
+    assignee: Assignee
+  };
+  let { role, email, companyId } = req.body;
+  let user = await Modal[role].findOne({
+    email: email,
+    companyId: companyId
+  });
   if (!user) return res.status(404).send("User with given id not found.");
   res.send(_.pick(user, ["_id", "name", "email", "profilePicture"]));
 });

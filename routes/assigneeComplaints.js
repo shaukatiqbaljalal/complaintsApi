@@ -2,9 +2,14 @@ const { Complaint } = require("../models/complaint");
 const { Admin } = require("../models/admin");
 const { Notification } = require("../models/notification");
 const authAssignee = require("../middleware/authAssignee");
+const authUser = require("../middleware/authUser");
 const io = require("../socket");
 const express = require("express");
 const router = express.Router();
+const {
+  executePagination,
+  prepareFilter
+} = require("../middleware/pagination");
 
 // Getting complaints of assignee -- Assignee
 router.get("/", authAssignee, async (req, res) => {
@@ -25,36 +30,16 @@ router.get("/", authAssignee, async (req, res) => {
   res.send(complaints);
 });
 
-// Paginated
-// Getting complaints of assignee -- Assignee
-router.get("/paginated", authAssignee, async (req, res) => {
-  let page = +req.query.currentPage || 1;
-  let pageSize = +req.query.pageSize;
-
-  const complaintsCount = await Complaint.find({
-    assignedTo: req.assignee._id,
-    spam: false
-  }).count();
-
-  const complaints = await Complaint.find({
-    assignedTo: req.assignee._id,
-    spam: false
-  })
-    .skip((page - 1) * pageSize)
-    .limit(pageSize)
-    .populate("assignedTo", "name _id")
-    .populate("complainer", "name _id")
-    .populate("category", "name _id");
-
-  if (!complaints)
-    return res
-      .status(404)
-      .send("complaints with given Assignee was not found.");
-
-  res.header("itemsCount", complaintsCount);
-  res.header("access-control-expose-headers", "itemsCount");
-  res.send(complaints);
-});
+router.get(
+  "/paginated/:pageNo/:pageSize",
+  authUser,
+  prepareFilter,
+  (req, res, next) => {
+    req.body.filter.assignedTo = req.user._id;
+    next();
+  },
+  executePagination(Complaint)
+);
 
 // assignee drop responsibility
 router.put("/drop/:id", authAssignee, async (req, res) => {

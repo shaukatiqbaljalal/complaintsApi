@@ -9,7 +9,10 @@ const { Assignee } = require("../models/assignee");
 const { Complainer } = require("../models/complainer");
 const { Admin } = require("../models/admin");
 const { Notification } = require("../models/notification");
-
+const {
+  executePagination,
+  prepareFilter
+} = require("../middleware/pagination");
 const checkSeverity = require("../utils/severity");
 const authComplainer = require("../middleware/authComplainer");
 const io = require("../socket");
@@ -62,29 +65,16 @@ router.get("/", authComplainer, async (req, res) => {
 
 // Paginated
 // complainer can find only his complaints -- Complainer
-router.get("/paginated", authComplainer, async (req, res) => {
-  let page = +req.query.currentPage || 1;
-  let pageSize = +req.query.pageSize;
-
-  const complaintsCount = await Complaint.find({
-    complainer: req.complainer._id,
-    companyId: req.complainer.companyId
-  }).count();
-
-  const complaints = await Complaint.find({
-    complainer: req.complainer._id
-  })
-    .skip((page - 1) * pageSize)
-    .limit(pageSize)
-    .populate("complainer", "name _id")
-    .populate("assignedTo", "name _id")
-    .populate("category", "name _id");
-  console.log(complaints.length);
-
-  res.header("itemsCount", complaintsCount);
-  res.header("access-control-expose-headers", "itemsCount");
-  res.send(complaints);
-});
+router.get(
+  "/paginated/:pageNo/:pageSize",
+  authUser,
+  prepareFilter,
+  (req, res, next) => {
+    req.body.filter.complainer = req.user._id;
+    next();
+  },
+  executePagination(Complaint)
+);
 
 // configuring multer for files
 // const upload = multer({

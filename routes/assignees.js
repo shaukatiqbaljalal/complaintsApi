@@ -15,7 +15,10 @@ const encrypt = require("./../common/encrypt");
 const sendEmail = require("../common/sendEmail");
 const { getEmailOptions } = require("../common/sendEmail");
 const authUser = require("./../middleware/authUser");
-
+const {
+  executePagination,
+  prepareFilter
+} = require("../middleware/pagination");
 // multer storageor
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -73,24 +76,12 @@ router.get("/all", authUser, async (req, res) => {
 });
 
 // paginated
-router.get("/all/paginated", authUser, async (req, res) => {
-  let page = +req.query.currentPage || 1;
-  let pageSize = +req.query.pageSize;
-
-  const assigneesCount = await Assignee.find({
-    companyId: req.user.companyId
-  }).count();
-
-  const assignees = await Assignee.find({ companyId: req.user.companyId })
-    .skip((page - 1) * pageSize)
-    .limit(pageSize);
-
-  if (!assignees) return res.status(404).send("There are no Assignees.");
-
-  res.header("itemsCount", assigneesCount);
-  res.header("access-control-expose-headers", "itemsCount");
-  res.status(200).send(assignees);
-});
+router.get(
+  "/paginated/:pageNo/:pageSize",
+  authUser,
+  prepareFilter,
+  executePagination(Assignee)
+);
 
 //getting assignee based on his/her _id
 router.get("/me/:id", authUser, async (req, res) => {
