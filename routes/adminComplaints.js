@@ -1,4 +1,5 @@
 const { Complaint } = require("../models/complaint");
+const { Configuration } = require("../models/configuration");
 const authUser = require("../middleware/authUser");
 const _ = require("lodash");
 const {
@@ -37,6 +38,46 @@ router.get(
   executePagination(Complaint)
 );
 
+router.get("/segments/count", authAdmin, async (req, res, next) => {
+  let filter = { companyId: req.admin.companyId };
+  let complaints = await Complaint.find(filter);
+  let config = await Configuration.findOne(filter);
+  console.log(config);
+  let delayedDays = 5;
+  if (config.delayedDays) delayedDays = +config.delayedDays;
+  let positiveFeedback = [];
+  let delayed = [];
+  let negativeFeedback = [];
+  let spamComplaints = [];
+
+  complaints.forEach(complaint => {
+    if (complaint.spam) spamComplaints.push(complaint);
+    let days = calculateDays(complaint.timeStamp) + 1;
+    if (days > delayedDays) {
+      delayed.push(complaint);
+    }
+    if (complaint.feedbackTags) {
+      if (complaint.feedbackTags === "satisfied")
+        positiveFeedback.push(complaint);
+      else negativeFeedback.push(complaint);
+    }
+  });
+
+  res.json({
+    positiveFeedback: positiveFeedback.length,
+    negativeFeedback: negativeFeedback.length,
+    spamComplaints: spamComplaints.length,
+    delayedComplaints: delayed.length,
+    totalComplaints: complaints.length
+  });
+});
+calculateDays = stamp => {
+  var date = new Date(stamp);
+  let d = new Date();
+  let days =
+    Math.ceil(Math.abs(d.getTime() - date.getTime()) / (1000 * 3600 * 24)) - 1;
+  return days;
+};
 // Getting assigned complaints of Admin -- Admin
 router.get("/assigned-complaints", authAdmin, async (req, res) => {
   const complaints = await Complaint.find({

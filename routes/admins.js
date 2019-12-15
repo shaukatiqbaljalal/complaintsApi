@@ -120,8 +120,8 @@ router.post(
       let filename = `cmp-${req.complainer._id}-${Date.now()}.png`;
       let filePath = path.join("profilePictures", filename);
 
-      assignee.set("profilePicture", buff);
-      assignee.set("profilePath", filePath);
+      admin.set("profilePicture", buff);
+      admin.set("profilePath", filePath);
     }
 
     if (req.file) {
