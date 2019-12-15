@@ -1,9 +1,10 @@
 const paginate = require("../common/paginate");
 const ObjectId = require("mongodb").ObjectID;
+const escapeRegex = require("./../common/regex-excape");
 
 function executePagination(Modal) {
   return async (req, res, next) => {
-    let pageNum = +req.params.currentPage || 1;
+    let pageNum = +req.params.pageNo || 1;
     let pageSize = +req.params.pageSize || 10;
     try {
       let { itemsCount, items } = await paginate(
@@ -22,11 +23,14 @@ function executePagination(Modal) {
   };
 }
 function prepareFilter(req, res, next) {
-  let { searchBy, searchKeyword } = req.query;
+  let { searchBy, searchKeyword, keywordType } = req.query;
   let filter = { companyId: ObjectId(req.user.companyId) };
   if (searchBy && searchKeyword) {
-    regex = new RegExp(escapeRegex(searchBy), "gi");
-    filter[searchBy] = regex;
+    if (keywordType !== "ObjectId") {
+      searchKeyword = new RegExp(escapeRegex(searchKeyword), "gi");
+    }
+    filter[searchBy] = searchKeyword;
+    // filter.category = "5df24391218a6435a4c1b667";
   }
 
   req.body.filter = filter;
