@@ -1,6 +1,6 @@
 const csv = require("csv-parser");
 const fs = require("fs");
-const capitalizeFirstLetter = require("./../common/helper");
+const { capitalizeFirstLetter } = require("./../common/helper");
 
 const { generatePassword } = require("./../middleware/passwordGenerator");
 module.exports = async function(req, res, next) {

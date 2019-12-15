@@ -1,4 +1,5 @@
 const { Complaint } = require("../models/complaint");
+const { Complainer } = require("../models/complainer");
 const ObjectId = require("mongodb").ObjectID;
 const { Configuration } = require("../models/configuration");
 const authUser = require("../middleware/authUser");
@@ -9,7 +10,8 @@ const {
 } = require("../middleware/pagination");
 const {
   getSummaryStages,
-  getMonthwiseStages
+  getMonthwiseStages,
+  getUniqueCategoriesStages
 } = require("./../common/aggregationStages");
 
 const { calculateDays } = require("./../common/helper");
@@ -90,7 +92,9 @@ router.get("/aggregate/monthwise", authUser, async (req, res) => {
       spam: 0,
       inProgress: 0,
       resolved: 0
-    }
+    },
+    usersCount: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    uniqueCategories: [{ _id: "", name: "All Categories" }]
   };
   let analyticsResult = [];
   let spamComplaintsCount = await getSpamComplaintsCount(req.user);
@@ -109,6 +113,19 @@ router.get("/aggregate/monthwise", authUser, async (req, res) => {
 
   analyticsResult.forEach(obj => {
     result.monthwise[obj._id.month - 1] = obj.totalComplaints;
+  });
+
+  analyticsResult = await analytics(Complainer, req.user, "monthwiseUsers");
+  analyticsResult.forEach(obj => {
+    result.usersCount[obj._id.month - 1] = obj.totalComplaints;
+  });
+  analyticsResult = await analytics(Complaint, req.user, "uniqueCategories");
+  console.log(analyticsResult);
+  analyticsResult.forEach((obj, index) => {
+    result.uniqueCategories.push({
+      name: obj._id.categoryName[0],
+      _id: obj.categoryId
+    });
   });
 
   res.send(result);
@@ -142,11 +159,12 @@ async function analytics(Modal, user, analyticsType) {
       }
     };
   }
-
-  if (analyticsType === "summary") {
+  if (analyticsType === "uniqueCategories") {
+    stages = [...stages, ...getUniqueCategoriesStages()];
+  } else if (analyticsType === "summary") {
     stages = [...stages, ...getSummaryStages()];
-  } else if (analyticsType === "monthwise") {
-    stages = [...stages, ...getMonthwiseStages()];
+  } else {
+    stages = [...stages, ...getMonthwiseStages(analyticsType)];
   }
 
   return await Modal.aggregate(stages);

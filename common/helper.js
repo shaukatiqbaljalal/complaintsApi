@@ -1,6 +1,6 @@
-module.exports = function capitalizeFirstLetter(string) {
+function capitalizeFirstLetter(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
-};
+}
 
 function calculateDays(stamp) {
   var date = new Date(stamp);
@@ -10,4 +10,4 @@ function calculateDays(stamp) {
   return days;
 }
 
-module.exports = { calculateDays };
+module.exports = { calculateDays, capitalizeFirstLetter };

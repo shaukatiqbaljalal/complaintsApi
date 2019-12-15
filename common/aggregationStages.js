@@ -17,14 +17,15 @@ function getSummaryStages() {
   ];
 }
 
-function getMonthwiseStages(params) {
+function getMonthwiseStages(aggregateType = "monthwise") {
+  let dateName = aggregateType === "monthwiseUsers" ? "createdAt" : "timeStamp";
   return [
     {
       $project: {
         status: 1,
         submittedOn: {
           $dateToParts: {
-            date: "$timeStamp"
+            date: `$${dateName}`
           }
         }
       }
@@ -49,7 +50,31 @@ function getMonthwiseStages(params) {
     { $sort: { month: 1 } }
   ];
 }
+
+function getUniqueCategoriesStages(aggregateType = "monthwise") {
+  return [
+    {
+      $lookup: {
+        from: "categories",
+        localField: "category",
+        foreignField: "_id",
+        as: "categoryObj"
+      }
+    },
+    {
+      $group: {
+        _id: {
+          categoryName: "$categoryObj.name"
+          // status: "$status"
+        },
+        categoryId: { $first: "$category" },
+        totalComplaints: { $sum: 1 }
+      }
+    }
+  ];
+}
 module.exports = {
   getSummaryStages,
-  getMonthwiseStages
+  getMonthwiseStages,
+  getUniqueCategoriesStages
 };

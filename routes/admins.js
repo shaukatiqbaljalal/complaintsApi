@@ -1,5 +1,5 @@
 const encrypt = require("./../common/encrypt");
-const capitalizeFirstLetter = require("./../common/helper");
+const { capitalizeFirstLetter } = require("./../common/helper");
 const { Company } = require("../models/company");
 const { Admin, validate } = require("../models/admin");
 const { Complainer } = require("../models/complainer");

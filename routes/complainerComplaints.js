@@ -20,7 +20,7 @@ const express = require("express");
 const multer = require("multer");
 const router = express.Router();
 const { AttachmentType } = require("../models/attachment");
-const capitalizeFirstLetter = require("./../common/helper");
+const { capitalizeFirstLetter } = require("./../common/helper");
 const authUser = require("./../middleware/authUser");
 const _ = require("lodash");
 
