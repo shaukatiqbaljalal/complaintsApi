@@ -1,4 +1,5 @@
 const { Complaint } = require("../models/complaint");
+const ObjectId = require("mongodb").ObjectID;
 const { Configuration } = require("../models/configuration");
 const authUser = require("../middleware/authUser");
 const _ = require("lodash");
@@ -6,6 +7,11 @@ const {
   executePagination,
   prepareFilter
 } = require("../middleware/pagination");
+const {
+  getSummaryStages,
+  getMonthwiseStages
+} = require("./../common/aggregationStages");
+
 const { calculateDays } = require("./../common/helper");
 const { Assignee } = require("../models/assignee");
 const { Notification } = require("../models/notification");
@@ -76,6 +82,75 @@ router.get("/segments/count", authAdmin, async (req, res, next) => {
     totalComplaints: complaints.length
   });
 });
+
+router.get("/aggregate/monthwise", authUser, async (req, res) => {
+  let result = {
+    monthwise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    summary: {
+      spam: 0,
+      inProgress: 0,
+      resolved: 0
+    }
+  };
+  let analyticsResult = [];
+  let spamComplaintsCount = await getSpamComplaintsCount(req.user);
+  result.summary.spam = spamComplaintsCount;
+  analyticsResult = await analytics(Complaint, req.user, "summary");
+  let resolved = 0;
+  analyticsResult.forEach(obj => {
+    if (obj._id.status === "in-progress") {
+      result.summary.inProgress = obj.totalComplaints;
+    } else {
+      resolved += obj.totalComplaints;
+    }
+  });
+  result.summary.resolved = resolved;
+  analyticsResult = await analytics(Complaint, req.user, "monthwise");
+
+  analyticsResult.forEach(obj => {
+    result.monthwise[obj._id.month - 1] = obj.totalComplaints;
+  });
+
+  res.send(result);
+});
+
+async function getSpamComplaintsCount(user) {
+  let filter = { companyId: user.companyId, spam: true };
+  if (user.role === "complainer") {
+    filter.complainer = user._id;
+  } else if (user.role === "assignedTo") {
+    filter.assignedTo = user._id;
+  }
+  return (spamComplaintsCOunt = await Complaint.find(filter).count());
+}
+
+async function analytics(Modal, user, analyticsType) {
+  let stages = [{ $match: { companyId: ObjectId(user.companyId) } }];
+
+  if (user.role === "complainer") {
+    stages[0] = {
+      $match: {
+        companyId: ObjectId(user.companyId),
+        complainer: ObjectId(user._id)
+      }
+    };
+  } else if (user.role === "assignee") {
+    stages[0] = {
+      $match: {
+        companyId: ObjectId(user.companyId),
+        assignedTo: ObjectId(user._id)
+      }
+    };
+  }
+
+  if (analyticsType === "summary") {
+    stages = [...stages, ...getSummaryStages()];
+  } else if (analyticsType === "monthwise") {
+    stages = [...stages, ...getMonthwiseStages()];
+  }
+
+  return await Modal.aggregate(stages);
+}
 
 // Getting assigned complaints of Admin -- Admin
 router.get("/assigned-complaints", authAdmin, async (req, res) => {
