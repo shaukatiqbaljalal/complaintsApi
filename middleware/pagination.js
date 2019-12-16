@@ -26,7 +26,7 @@ function prepareFilter(req, res, next) {
   let { searchBy, searchKeyword, keywordType } = req.query;
   let filter = { companyId: ObjectId(req.user.companyId) };
   if (searchBy && searchKeyword) {
-    if (keywordType !== "ObjectId") {
+    if (keywordType === "string") {
       searchKeyword = new RegExp(escapeRegex(searchKeyword), "gi");
     }
     filter[searchBy] = searchKeyword;

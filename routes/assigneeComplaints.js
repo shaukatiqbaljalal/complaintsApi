@@ -158,6 +158,9 @@ router.put("/:id/:status/:remarks", authAssignee, async (req, res) => {
   remarks.push(newRemarks);
   complaint.set("remarks", remarks);
   complaint.set("status", req.params.status);
+  if (req.params.status === "in-progress") {
+    complaint.set("feedbackTags", "");
+  }
   try {
     let notification = new Notification({
       msg: `Complaint status has been changed.`,
