@@ -27,13 +27,9 @@ router.post("/", async (req, res) => {
 
   configuration = new Configuration(req.body);
 
-  try {
-    await configuration.save();
+  await configuration.save();
 
-    res.send(configuration);
-  } catch (error) {
-    res.status(500).send(error);
-  }
+  res.send(configuration);
 });
 
 router.put("/:id", async (req, res) => {

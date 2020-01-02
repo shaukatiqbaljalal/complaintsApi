@@ -59,12 +59,8 @@ router.post("/", upload.single("profilePicture"), async (req, res) => {
   if (company)
     return res.status(400).send("Company with given name already exists");
   company = new Company(req.body);
-  try {
-    await company.save();
-    res.send(company);
-  } catch (error) {
-    res.status(500).send("COuld not stode company details", error);
-  }
+  await company.save();
+  res.send(company);
 });
 
 router.put("/:id", upload.single("profilePicture"), async (req, res) => {
@@ -80,16 +76,12 @@ router.put("/:id", upload.single("profilePicture"), async (req, res) => {
   req.body.profilePicture = company.profilePicture;
   if (req.file) {
     req.body.profilePicture = fs.readFileSync(req.file.path);
+    deleteFile(req.file.path);
   }
-  try {
-    company = await Company.findByIdAndUpdate(req.params.id, req.body, {
-      new: true
-    });
-    res.send(company);
-    if (req.file) deleteFile(req.file.path);
-  } catch (error) {
-    res.status(500).send("Some error occured", error);
-    if (req.file) deleteFile(req.file.path);
-  }
+
+  company = await Company.findByIdAndUpdate(req.params.id, req.body, {
+    new: true
+  });
+  res.send(company);
 });
 module.exports = router;
