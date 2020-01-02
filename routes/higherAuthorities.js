@@ -58,12 +58,8 @@ router.post("/", authUser, passwordGenrator, async (req, res) => {
   });
 
   member.password = encrypt(member.password);
-  try {
-    await member.save();
-    res.send(_.pick(member, ["_id", "name", "email", "designation"]));
-  } catch (error) {
-    res.status(500).send("Some error occurred", error);
-  }
+  await member.save();
+  res.send(_.pick(member, ["_id", "name", "email", "designation"]));
 });
 
 router.put("/:id", async (req, res) => {

@@ -91,14 +91,9 @@ router.post("/", upload.single("messageBody"), authUser, async (req, res) => {
       receiver: req.body.receiver
     });
   }
-  try {
-    await message.save();
-    io.getIO().emit("msg", message);
-    res.send(message);
-  } catch (error) {
-    console.log("in error");
-    return res.status(500).send("Some error occured");
-  }
+  await message.save();
+  io.getIO().emit("msg", message);
+  res.send(message);
 });
 
 // for deleting conversation

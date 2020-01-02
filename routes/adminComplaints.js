@@ -357,37 +357,33 @@ router.put(
     complaint.assigned = true;
     complaint.assignedTo = { _id: req.params.assigneeId };
     complaint.onModel = "Assignee";
-    try {
-      let notification = new Notification({
-        msg: `You have been assigned with new complaint`,
-        receivers: {
-          role: "",
-          id: complaint.assignedTo._id
-        },
-        companyId: req.admin.companyId,
-        complaintId: complaint._id
-      });
-      await complaint.save();
-      await notification.save();
+    let notification = new Notification({
+      msg: `You have been assigned with new complaint`,
+      receivers: {
+        role: "",
+        id: complaint.assignedTo._id
+      },
+      companyId: req.admin.companyId,
+      complaintId: complaint._id
+    });
+    await complaint.save();
+    await notification.save();
 
-      console.log("Task Assigned - admin");
+    console.log("Task Assigned - admin");
 
-      const upcmp = await Complaint.findById(req.params.complaintId)
-        .populate("assignedTo", "name _id")
-        .populate("complainer", "name _id")
-        .populate("category", "name _id");
+    const upcmp = await Complaint.findById(req.params.complaintId)
+      .populate("assignedTo", "name _id")
+      .populate("complainer", "name _id")
+      .populate("category", "name _id");
 
-      io.getIO().emit("complaints", {
-        action: "task assigned",
-        complaint: upcmp,
-        notification: notification
-      });
-      console.log("Task Assigned - admin");
+    io.getIO().emit("complaints", {
+      action: "task assigned",
+      complaint: upcmp,
+      notification: notification
+    });
+    console.log("Task Assigned - admin");
 
-      res.status(200).send(upcmp);
-    } catch (error) {
-      res.status(500).send("Error occured", error);
-    }
+    res.status(200).send(upcmp);
   }
 );
 

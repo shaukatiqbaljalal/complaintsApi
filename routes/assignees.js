@@ -165,11 +165,8 @@ router.post(
     // assignee.password = await bcrypt.hash(assignee.password, salt);
 
     assignee.password = encrypt(assignee.password);
-    try {
-      await assignee.save();
-    } catch (error) {
-      return res.status(500).send("Could not create user");
-    }
+    await assignee.save();
+
     const options = getEmailOptions(
       assignee.email,
       req.get("origin"),
