@@ -34,6 +34,8 @@
     "path": "^0.12.7",
     "pdfkit": "^0.10.0",
     "sentiment": "^5.0.1",
-    "socket.io": "^2.2.0"
+    "socket.io": "^2.2.0",
+    "winston": "^3.2.1",
+    "winston-mongodb": "^5.0.1"
   }
 }
