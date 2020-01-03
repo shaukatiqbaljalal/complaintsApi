@@ -3,6 +3,7 @@ require("winston-mongodb");
 require("express-async-errors");
 const config = require("config");
 module.exports = function() {
+  const uri = config.get("dbUri");
   winston.handleExceptions(
     new winston.transports.File({ filename: "uncaughtExceptions.log" })
   );
@@ -13,7 +14,7 @@ module.exports = function() {
 
   winston.add(winston.transports.File, { filename: "logfile.log" });
   winston.add(winston.transports.MongoDB, {
-    db: config.get("dbUri"),
+    db: uri,
     level: "info"
   });
 };
