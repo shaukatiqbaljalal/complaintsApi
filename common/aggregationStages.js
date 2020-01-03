@@ -33,7 +33,8 @@ function getMonthwiseStages(aggregateType = "monthwise") {
 
     {
       $match: {
-        "submittedOn.year": { $eq: new Date().getFullYear() }
+        "submittedOn.year": { $eq: 2019 }
+        // "submittedOn.year": { $eq: new Date().getFullYear() }
       }
     },
     {
