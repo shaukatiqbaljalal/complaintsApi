@@ -1,5 +1,5 @@
 const encrypt = require("./../common/encrypt");
-const capitalizeFirstLetter = require("./../common/helper");
+const { capitalizeFirstLetter } = require("./../common/helper");
 const authUser = require("./../middleware/authUser");
 const path = require("path");
 const { Complainer, validate } = require("../models/complainer");
@@ -15,7 +15,10 @@ const fs = require("fs");
 const multer = require("multer");
 const { getEmailOptions } = require("../common/sendEmail");
 const sendEmail = require("../common/sendEmail");
-
+const {
+  executePagination,
+  prepareFilter
+} = require("../middleware/pagination");
 // multer storage
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -74,6 +77,14 @@ router.get("/all", authUser, async (req, res) => {
 
   res.status(200).send(complainers);
 });
+
+// paginated
+router.get(
+  "/paginated/:pageNo/:pageSize",
+  authUser,
+  prepareFilter,
+  executePagination(Complainer)
+);
 
 router.get("/count/complainers", authUser, async (req, res) => {
   const complainers = await Complainer.find({ companyId: req.user.companyId });

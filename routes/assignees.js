@@ -17,9 +17,10 @@ const encrypt = require("./../common/encrypt");
 const sendEmail = require("../common/sendEmail");
 const { getEmailOptions } = require("../common/sendEmail");
 const authUser = require("./../middleware/authUser");
-const { Complaint } = require("../models/complaint");
-const io = require("../socket");
-
+const {
+  executePagination,
+  prepareFilter
+} = require("../middleware/pagination");
 // multer storageor
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -75,6 +76,14 @@ router.get("/all", authUser, async (req, res) => {
 
   res.status(200).send(assignees);
 });
+
+// paginated
+router.get(
+  "/paginated/:pageNo/:pageSize",
+  authUser,
+  prepareFilter,
+  executePagination(Assignee)
+);
 
 //getting assignee based on his/her _id
 router.get("/me/:id", authUser, async (req, res) => {
@@ -150,11 +159,8 @@ router.post(
     // assignee.password = await bcrypt.hash(assignee.password, salt);
 
     assignee.password = encrypt(assignee.password);
-    try {
-      await assignee.save();
-    } catch (error) {
-      return res.status(500).send("Could not create user");
-    }
+    await assignee.save();
+
     const options = getEmailOptions(
       assignee.email,
       req.get("origin"),

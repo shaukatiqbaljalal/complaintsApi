@@ -9,7 +9,10 @@ const { Assignee } = require("../models/assignee");
 const { Complainer } = require("../models/complainer");
 const { Admin } = require("../models/admin");
 const { Notification } = require("../models/notification");
-
+const {
+  executePagination,
+  prepareFilter
+} = require("../middleware/pagination");
 const checkSeverity = require("../utils/severity");
 const authComplainer = require("../middleware/authComplainer");
 const io = require("../socket");
@@ -17,7 +20,7 @@ const express = require("express");
 const multer = require("multer");
 const router = express.Router();
 const { AttachmentType } = require("../models/attachment");
-const capitalizeFirstLetter = require("./../common/helper");
+const { capitalizeFirstLetter } = require("./../common/helper");
 const authUser = require("./../middleware/authUser");
 const _ = require("lodash");
 
@@ -61,185 +64,34 @@ router.get("/", authComplainer, async (req, res) => {
     .populate("category", "name _id")
     .populate("locationTag", "name _id");
 
-  // console.log(complaints);
-
   res.send(complaints);
 });
 
-// fetching up complaint's picture
-router.get("/download/image/:id", async (req, res, next) => {
-  try {
-    const complaint = await Complaint.findById(req.params.id);
-    if (!complaint) {
-      return res.status(404).send("The complaint with given ID was not found.");
-    } else if (!complaint.files) {
-      return res.status(404).send("Not file found with this Complaint.");
-    }
+// Paginated
+// complainer can find only his complaints -- Complainer
+router.get(
+  "/paginated/:pageNo/:pageSize",
+  authUser,
+  prepareFilter,
+  (req, res, next) => {
+    req.body.filter.complainer = req.user._id;
+    next();
+  },
+  executePagination(Complaint)
+);
 
-    const fileExtension = complaint.files.split(".")[1];
-
-    const filePath = path.join(
-      "public",
-      "files",
-      "complaints",
-      complaint.files
-    );
-    fs.readFile(filePath, (err, data) => {
-      if (err) return next(err);
-
-      res.setHeader("Content-Type", mime.getType(fileExtension));
-      res.setHeader(
-        "Content-Disposition",
-        'attachment; filename="' + complaint.files + '"'
-      );
-      res.send(data);
-    });
-  } catch (e) {
-    res.status(500).send("Some error occured while fetching file", e);
-  }
-});
-
-// fetching up complaint's picture
-router.get("/view/image/:id", async (req, res, next) => {
-  try {
-    const complaint = await Complaint.findById(req.params.id);
-    if (!complaint) {
-      return res.status(404).send("The complaint with given ID was not found.");
-    } else if (!complaint.files) {
-      return res.status(404).send("Not file found with this Complaint.");
-    }
-
-    const fileExtension = complaint.files.split(".")[1];
-
-    const filePath = path.join(
-      "public",
-      "files",
-      "complaints",
-      complaint.files
-    );
-    fs.readFile(filePath, (err, data) => {
-      if (err) return next(err);
-
-      res.setHeader("Content-Type", mime.getType(fileExtension));
-      res.setHeader(
-        "Content-Disposition",
-        'inline; filename="' + complaint.files + '"'
-      );
-      res.send(data);
-    });
-  } catch (e) {
-    res.status(500).send("Some error occured while fetching file", e);
-  }
-});
-
-// Complainer give feedback on certain complaint -- Complainer
-router.put("/feedback/:id", authComplainer, async (req, res) => {
-  const complaint = await Complaint.findOne({ _id: req.params.id })
-    .populate("assignedTo", "name _id")
-    .populate("complainer", "name _id")
-    .populate("category", "name _id");
-
-  if (!complaint)
-    return res
-      .status(404)
-      .send("The complaint with the given ID was not found.");
-
-  complaint.feedbackRemarks = req.body.feedbackRemarks;
-
-  if (req.body.feedbackTags === "no") {
-    complaint.feedbackTags = "not satisfied";
-  } else {
-    complaint.feedbackTags = "satisfied";
-  }
-  try {
-    let notification = new Notification({
-      msg: `You have been given feedback.`,
-      receivers: {
-        role: "",
-        id: complaint.assignedTo._id
-      },
-      companyId: req.complainer.companyId,
-      complaintId: complaint._id
-    });
-
-    await complaint.save();
-    await notification.save();
-    const newUp = await Complaint.findOne({ _id: req.params.id })
-      .populate("complainer", "name _id")
-      .populate("assignedTo", "name _id")
-      .populate("category", "name _id");
-
-    io.getIO().emit("complaints", {
-      action: "feedback",
-      complaint: newUp,
-      notification: notification
-    });
-    console.log("feedback given complaint - assignee");
-
-    res.send(newUp);
-  } catch (error) {
-    res.status(404).send("Could not find file.");
-  }
-});
-
-// getting all spam complaints for charts and graphs
-router.get("/get/all/spam", authUser, async (req, res) => {
-  const complaints = await Complaint.find({
-    spam: true,
-    companyId: req.user.companyId
-  }).select("timeStamp");
-  if (!complaints)
-    return res
-      .status(404)
-      .send("The complaint with the given ID was not found.");
-
-  res.send(complaints);
-});
-
-// getting all progress complaints for charts and graphs
-router.get("/get/all/progress", authUser, async (req, res) => {
-  const complaints = await Complaint.find({
-    status: "in-progress",
-    companyId: req.user.companyId
-  }).select("timeStamp");
-  if (!complaints)
-    return res
-      .status(404)
-      .send("The complaint with the given ID was not found.");
-
-  res.send(complaints);
-});
-
-// getting all resolved complaints for charts and graphs
-router.get("/get/all/resolved", async (req, res) => {
-  const complaints = await Complaint.find({
-    status: { $ne: "in-progress" }
-  }).select("timeStamp");
-  if (!complaints)
-    return res
-      .status(404)
-      .send("The complaint with the given ID was not found.");
-
-  res.send(complaints);
-});
-
-// Complainer can get any complaint by ID -- Complainer
-router.get("/:id", async (req, res) => {
-  const complaint = await Complaint.findOne({
-    _id: req.params.id
-  })
-    .populate("complainer", "name _id")
-    .populate("assignedTo", "name _id")
-    .populate("category", "name _id")
-    .populate("locationTag", "name _id");
-
-  if (!complaint)
-    return res
-      .status(404)
-      .send("The complaint with the given ID was not found.");
-
-  res.send(complaint);
-});
+// configuring multer for files
+// const upload = multer({
+//   limits: {
+//     fileSize: 1000000
+//   },
+//   fileFilter(req, file, cb) {
+//     if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+//       return cb(new Error("File must be .jpg | .jpeg | .png"));
+//     }
+//     cb(undefined, true);
+//   }
+// });
 
 // complainer can make complaint -- Complainer
 router.post(
@@ -376,37 +228,33 @@ router.post(
       remarks: []
     });
 
-    try {
-      let notification = new Notification({
-        msg: `New complaint has been added with severity ${severity}.`,
-        receivers: {
-          role: "admin",
-          id: assignee ? assignee._id : adminAssignee._id
-        },
-        companyId: req.body.companyId,
-        complaintId: complaint._id
-      });
+    let notification = new Notification({
+      msg: `New complaint has been added with severity ${severity}.`,
+      receivers: {
+        role: "admin",
+        id: assignee ? assignee._id : adminAssignee._id
+      },
+      companyId: req.body.companyId,
+      complaintId: complaint._id
+    });
 
-      await complaint.save();
-      await notification.save();
-      let newUp = await Complaint.findById(complaint._id)
-        .populate("complainer", "name _id")
-        .populate("assignedTo", "name _id")
-        .populate("category", "name _id")
-        .populate("locationTag", "name _id");
+    await complaint.save();
+    await notification.save();
 
-      io.getIO().emit("complaints", {
-        action: "new complaint",
-        complaint: newUp,
-        notification: notification
-      });
+    let newUp = await Complaint.findById(complaint._id)
+      .populate("complainer", "name _id")
+      .populate("assignedTo", "name _id")
+      .populate("category", "name _id");
 
-      console.log("new complaint - complainer");
+    io.getIO().emit("complaints", {
+      action: "new complaint",
+      complaint: newUp,
+      notification: notification
+    });
 
-      res.send(newUp);
-    } catch (error) {
-      res.status(500).send("Some error occured while fetching file", e);
-    }
+    console.log("new complaint - complainer");
+
+    res.send(newUp);
   }
 );
 
@@ -438,5 +286,170 @@ router.post(
 
 // console.log(complaint);
 // <-------getting the latest record from database------->
+
+// fetching up complaint's picture
+router.get("/download/image/:id", async (req, res, next) => {
+  const complaint = await Complaint.findById(req.params.id);
+  if (!complaint) {
+    return res.status(404).send("The complaint with given ID was not found.");
+  } else if (!complaint.files) {
+    return res.status(404).send("Not file found with this Complaint.");
+  }
+
+  const fileExtension = complaint.files.split(".")[1];
+
+  const filePath = path.join("public", "files", "complaints", complaint.files);
+  fs.readFile(filePath, (err, data) => {
+    if (err) return next(err);
+
+    res.setHeader("Content-Type", mime.getType(fileExtension));
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="' + complaint.files + '"'
+    );
+    res.send(data);
+  });
+});
+
+// fetching up complaint's picture
+router.get("/view/image/:id", async (req, res, next) => {
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) {
+      return res.status(404).send("The complaint with given ID was not found.");
+    } else if (!complaint.files) {
+      return res.status(404).send("Not file found with this Complaint.");
+    }
+
+    const fileExtension = complaint.files.split(".")[1];
+
+    const filePath = path.join(
+      "public",
+      "files",
+      "complaints",
+      complaint.files
+    );
+    fs.readFile(filePath, (err, data) => {
+      if (err) return next(err);
+
+      res.setHeader("Content-Type", mime.getType(fileExtension));
+      res.setHeader(
+        "Content-Disposition",
+        'inline; filename="' + complaint.files + '"'
+      );
+      res.send(data);
+    });
+  } catch (e) {
+    res.status(500).send("Some error occured while fetching file", e);
+  }
+});
+
+// Complainer give feedback on certain complaint -- Complainer
+router.put("/feedback/:id", authComplainer, async (req, res) => {
+  const complaint = await Complaint.findOne({ _id: req.params.id })
+    .populate("assignedTo", "name _id")
+    .populate("complainer", "name _id")
+    .populate("category", "name _id");
+
+  if (!complaint)
+    return res
+      .status(404)
+      .send("The complaint with the given ID was not found.");
+
+  complaint.feedbackRemarks = req.body.feedbackRemarks;
+
+  if (req.body.feedbackTags === "no") {
+    complaint.feedbackTags = "not satisfied";
+  } else {
+    complaint.feedbackTags = "satisfied";
+  }
+  try {
+    let notification = new Notification({
+      msg: `You have been given feedback.`,
+      receivers: {
+        role: "",
+        id: complaint.assignedTo._id
+      },
+      companyId: req.complainer.companyId,
+      complaintId: complaint._id
+    });
+
+    await complaint.save();
+    await notification.save();
+    const newUp = await Complaint.findOne({ _id: req.params.id })
+      .populate("complainer", "name _id")
+      .populate("assignedTo", "name _id")
+      .populate("category", "name _id");
+
+    io.getIO().emit("complaints", {
+      action: "feedback",
+      complaint: newUp,
+      notification: notification
+    });
+    console.log("feedback given complaint - assignee");
+
+    res.send(newUp);
+  } catch (error) {
+    res.status(404).send("Could not find file.");
+  }
+});
+
+// getting all spam complaints for charts and graphs
+router.get("/get/all/spam", authUser, async (req, res) => {
+  const complaints = await Complaint.find({
+    spam: true,
+    companyId: req.user.companyId
+  }).select("timeStamp");
+  if (!complaints)
+    return res
+      .status(404)
+      .send("The complaint with the given ID was not found.");
+
+  res.send(complaints);
+});
+
+// getting all progress complaints for charts and graphs
+router.get("/get/all/progress", authUser, async (req, res) => {
+  const complaints = await Complaint.find({
+    status: "in-progress",
+    companyId: req.user.companyId
+  }).select("timeStamp");
+  if (!complaints)
+    return res
+      .status(404)
+      .send("The complaint with the given ID was not found.");
+
+  res.send(complaints);
+});
+
+// getting all resolved complaints for charts and graphs
+router.get("/get/all/resolved", async (req, res) => {
+  const complaints = await Complaint.find({
+    status: { $ne: "in-progress" }
+  }).select("timeStamp");
+  if (!complaints)
+    return res
+      .status(404)
+      .send("The complaint with the given ID was not found.");
+
+  res.send(complaints);
+});
+
+// Complainer can get any complaint by ID -- Complainer
+router.get("/:id", async (req, res) => {
+  const complaint = await Complaint.findOne({
+    _id: req.params.id
+  })
+    .populate("complainer", "name _id")
+    .populate("assignedTo", "name _id")
+    .populate("category", "name _id");
+
+  if (!complaint)
+    return res
+      .status(404)
+      .send("The complaint with the given ID was not found.");
+
+  res.send(complaint);
+});
 
 module.exports = router;

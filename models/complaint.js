@@ -89,7 +89,7 @@ const Complaint = mongoose.model(
     },
     feedbackTags: {
       type: String,
-      enum: ["satisfied", "not satisfied"]
+      enum: ["satisfied", "not satisfied", ""]
     },
     severity: {
       type: String,

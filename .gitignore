@@ -3,3 +3,4 @@ public/files/reports
 public/files/complaints
 public/files/messages
 node_modules/
+logfile.log
