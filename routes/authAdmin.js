@@ -1,8 +1,5 @@
 const Joi = require("joi");
-const bcrypt = require("bcryptjs");
-const { Company } = require("../models/company");
 const express = require("express");
-const _ = require("lodash");
 const { Admin } = require("../models/admin");
 const router = express.Router();
 const decrypt = require("./../common/decrypt");
@@ -15,8 +12,7 @@ router.post("/", async (req, res) => {
     email: req.body.email.toLowerCase(),
     companyId: req.body.companyId
   });
-  console.log(admin);
-  console.log("After Admin");
+
   if (!admin) return res.status(400).send("Invalid email or password.");
   if (req.body.password !== decrypt(admin.password))
     return res.status(400).send("Invalid email or password.");

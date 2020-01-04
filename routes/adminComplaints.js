@@ -159,13 +159,17 @@ async function analytics(Modal, user, analyticsType) {
   let stages = [{ $match: { companyId: ObjectId(user.companyId) } }];
 
   if (user.role === "complainer") {
+    let matchFilter = {
+      companyId: ObjectId(user.companyId),
+      complainer: ObjectId(user._id)
+    };
+    if (analyticsType === "monthwiseResolvedComplaints")
+      matchFilter.status = { $ne: "in-progress" };
     stages[0] = {
-      $match: {
-        companyId: ObjectId(user.companyId),
-        complainer: ObjectId(user._id)
-      }
+      $match: matchFilter
     };
   } else if (user.role === "assignee") {
+    console.log("i am here");
     let matchFilter = {
       companyId: ObjectId(user.companyId),
       assignedTo: ObjectId(user._id)
