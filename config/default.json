@@ -1,9 +1,9 @@
 {
-  "jwtPrivateKey": "quickresponse_jwtPrivateKey",
+  // "jwtPrivateKey": "quickresponse_jwtPrivateKey",
   // "dbUri": "mongodb://localhost/QuickResponse",
   "dbUri": "mongodb://crunchtech300:23crunch23@quickresponse-shard-00-00-cwpr5.mongodb.net:27017,quickresponse-shard-00-01-cwpr5.mongodb.net:27017,quickresponse-shard-00-02-cwpr5.mongodb.net:27017/test?ssl=true&replicaSet=QuickResponse-shard-0&authSource=admin&retryWrites=true&w=majority",
   "emailServer": {
-    "email": "crunchtech300@gmail.com",
-    "password": "23crunch23"
+    "email": "crunchtech300@gmail.com"
+    // "password": "23crunch23"
   }
 }
