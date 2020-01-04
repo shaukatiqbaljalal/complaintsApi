@@ -10,6 +10,7 @@ const {
 } = require("../middleware/pagination");
 const {
   getSummaryStages,
+  getMonthwiseComplaintsStages,
   getMonthwiseStages,
   getUniqueCategoriesStages
 } = require("./../common/aggregationStages");
@@ -89,6 +90,7 @@ router.get("/segments/count", authAdmin, async (req, res, next) => {
 router.get("/aggregate/monthwise", authUser, async (req, res) => {
   let result = {
     monthwise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    monthwiseResolvedComplaints: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     summary: {
       spam: 0,
       inProgress: 0,
@@ -110,18 +112,29 @@ router.get("/aggregate/monthwise", authUser, async (req, res) => {
     }
   });
   result.summary.resolved = resolved;
+  //role based,
   analyticsResult = await analytics(Complaint, req.user, "monthwise");
 
   analyticsResult.forEach(obj => {
     result.monthwise[obj._id.month - 1] = obj.totalComplaints;
   });
-
-  analyticsResult = await analytics(Complainer, req.user, "monthwiseUsers");
-  analyticsResult.forEach(obj => {
-    result.usersCount[obj._id.month - 1] = obj.totalComplaints;
-  });
+  if (req.user.role === "admin") {
+    analyticsResult = await analytics(Complainer, req.user, "monthwiseUsers");
+    analyticsResult.forEach(obj => {
+      result.usersCount[obj._id.month - 1] = obj.totalComplaints;
+    });
+  } else {
+    analyticsResult = await analytics(
+      Complaint,
+      req.user,
+      "monthwiseResolvedComplaints"
+    );
+    analyticsResult.forEach(obj => {
+      result.monthwiseResolvedComplaints[obj._id.month - 1] =
+        obj.totalComplaints;
+    });
+  }
   analyticsResult = await analytics(Complaint, req.user, "uniqueCategories");
-  console.log(analyticsResult);
   analyticsResult.forEach((obj, index) => {
     result.uniqueCategories.push({
       name: obj._id.categoryName[0],
@@ -153,11 +166,14 @@ async function analytics(Modal, user, analyticsType) {
       }
     };
   } else if (user.role === "assignee") {
+    let matchFilter = {
+      companyId: ObjectId(user.companyId),
+      assignedTo: ObjectId(user._id)
+    };
+    if (analyticsType === "monthwiseResolvedComplaints")
+      matchFilter.status = { $ne: "in-progress" };
     stages[0] = {
-      $match: {
-        companyId: ObjectId(user.companyId),
-        assignedTo: ObjectId(user._id)
-      }
+      $match: matchFilter
     };
   }
   if (analyticsType === "uniqueCategories") {
