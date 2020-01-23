@@ -190,6 +190,7 @@ router.post(
     if (req.error) {
       res.status(400).send(req.error);
     }
+
     let errors = [];
     let users = req.users;
 
@@ -197,6 +198,7 @@ router.post(
     for (let index = 0; index < users.length; index++) {
       const user = users[index];
       user.companyId = req.user.companyId;
+
       const tempArray = user.responsibilities;
       const responsibilities = [];
 
@@ -204,6 +206,7 @@ router.post(
       if (user.responsibilities) {
         const categoryPathsArray = user.responsibilities.split("+");
         console.log(categoryPathsArray, "All Paths");
+
         //each path will be iterated through
         for (let j = 0; j < categoryPathsArray.length; j++) {
           const path = categoryPathsArray[j];
