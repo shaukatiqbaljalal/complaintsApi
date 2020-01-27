@@ -3,35 +3,48 @@ const mongoose = require("mongoose");
 // const jwt = require("jsonwebtoken");
 // const config = require("config");
 
-const companySchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    minlength: 5,
-    maxlength: 50
-  },
+const companySchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      minlength: 5,
+      maxlength: 50
+    },
 
-  address: {
-    type: String,
-    required: true,
-    minlength: 5,
-    maxlength: 255
-  },
-  phone: {
-    type: String,
-    required: false,
-    minlength: 9,
-    maxlength: 50
-  },
+    address: {
+      type: String,
+      required: true,
+      minlength: 5,
+      maxlength: 255
+    },
+    phone: {
+      type: String,
+      required: false,
+      minlength: 9,
+      maxlength: 50
+    },
+    email: {
+      type: String,
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ["active", "De-Activated"],
+      default: "active",
+      required: false
+    },
 
-  profilePath: {
-    type: String,
-    required: false,
-    minlength: 5,
-    maxlength: 1024
+    profilePath: {
+      type: String,
+      required: false,
+      minlength: 5,
+      maxlength: 1024
+    },
+    profilePicture: { type: Buffer }
   },
-  profilePicture: { type: Buffer }
-});
+  { timestamps: true }
+);
 
 // companySchema.methods.generateAuthToken = function() {
 //   // const profilePicture = this.profilePicture ? this.profilePicture : "";
@@ -58,6 +71,12 @@ function validateCompany(Company) {
     phone: Joi.string()
       .min(9)
       .max(50),
+    email: Joi.string()
+      .min(5)
+      .max(255)
+      .required()
+      .email(),
+    status: Joi.string(),
 
     profilePath: Joi.string()
       .min(5)

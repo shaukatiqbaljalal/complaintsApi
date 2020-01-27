@@ -21,8 +21,10 @@ const authUser = require("../routes/authUser");
 const authCompaliner = require("../routes/authComplainer");
 const authAssignee = require("../routes/authAssignee");
 const authAdmin = require("../routes/authAdmin");
+const authSuperAdmin = require("../routes/authSuperAdmin");
 const passwordHelper = require("../routes/passwordHelper");
 const samplecsv = require("../routes/samplecsv");
+const superAdmins = require("../routes/superAdmins");
 
 const notifications = require("../routes/notifications");
 
@@ -42,10 +44,12 @@ module.exports = function(app) {
   app.use("/api/messages", messages);
   app.use("/api/emails", emails);
 
+  //For authentcation
   app.use("/api/auth-complainer", authCompaliner);
   app.use("/api/auth-user", authUser);
   app.use("/api/auth-assignee", authAssignee);
   app.use("/api/auth-admin", authAdmin);
+  app.use("/api/auth-superAdmin", authSuperAdmin);
   app.use("/api/password", passwordHelper);
 
   // for creating profiles
@@ -54,6 +58,7 @@ module.exports = function(app) {
   app.use("/api/complainers", complainers);
   app.use("/api/assignees", assignees);
   app.use("/api/admins", admins);
+  app.use("/api/super-admins", superAdmins);
 
   //For configurations
   app.use("/api/higher-authorities", higherAuthorities);
