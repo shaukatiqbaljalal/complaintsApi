@@ -80,8 +80,7 @@ function validateCompany(Company) {
 
     profilePath: Joi.string()
       .min(5)
-      .max(255),
-    profilePicture: Joi.binary()
+      .max(255)
   };
   return Joi.validate(Company, schema);
 }

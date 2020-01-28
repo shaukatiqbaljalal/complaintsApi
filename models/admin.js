@@ -60,7 +60,6 @@ adminSchema.methods.generateAuthToken = function() {
       _id: this._id,
       name: this.name,
       role: "admin",
-      profilePath: this.profilePath,
       companyId: this.companyId
     },
     config.get("jwtPrivateKey")
