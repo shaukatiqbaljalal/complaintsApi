@@ -276,6 +276,8 @@ router.get("/:id", authUser, async (req, res) => {
 });
 
 router.get("/generateReport/:companyId/:from/:to", async (req, res) => {
+  console.log(req.params.from);
+  console.log(req.params.to);
   try {
     const allComplaints = await Complaint.find({
       companyId: req.params.companyId
@@ -290,6 +292,7 @@ router.get("/generateReport/:companyId/:from/:to", async (req, res) => {
 
     allComplaints.forEach(complaint => {
       let date = new Date(complaint.timeStamp);
+      console.log(complaint.timeStamp);
       if (from.getTime() <= date.getTime() && date.getTime() <= to.getTime()) {
         complaints.push(complaint);
         if (complaint.spam) {

@@ -1,4 +1,5 @@
 const { Assignee } = require("../models/assignee");
+const { SuperAdmin } = require("../models/superAdmin");
 const { Admin } = require("../models/admin");
 const { Complainer } = require("../models/complainer");
 const express = require("express");
@@ -20,6 +21,8 @@ router.post("/recover", async (req, res) => {
     user = await Admin.findOne({ email: email, companyId: companyId });
   else if (role === "complainer")
     user = await Complainer.findOne({ email: email, companyId: companyId });
+  else if (role === "superAdmin")
+    user = await Complainer.findOne({ email: email });
 
   if (!user)
     return res
@@ -39,14 +42,18 @@ router.post("/recover", async (req, res) => {
 
 router.put("/reset", authUser, async (req, res) => {
   const { role, id, currentPassword, newPassword } = req.body;
-  let user;
-  if (role === "assignee") user = await Assignee.findOne({ _id: id });
-  if (role === "admin") user = await Admin.findOne({ _id: id });
-  if (role === "complainer") user = await Complainer.findOne({ _id: id });
+  let Model = {
+    assignee: Assignee,
+    complainer: Complainer,
+    admin: Admin,
+    superAdmin: SuperAdmin
+  };
+  let user = await Model[role].findById(id);
   if (!user)
     return res
       .status(404)
       .send("There is no user with given Id and under the role=" + role);
+
   const oldPassword = decrypt(user.password);
   console.log(oldPassword);
 

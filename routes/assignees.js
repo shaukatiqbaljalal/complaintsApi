@@ -17,10 +17,12 @@ const encrypt = require("./../common/encrypt");
 const sendEmail = require("../common/sendEmail");
 const { getEmailOptions } = require("../common/sendEmail");
 const authUser = require("./../middleware/authUser");
+
 const {
   executePagination,
   prepareFilter
 } = require("../middleware/pagination");
+
 // multer storageor
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -174,6 +176,38 @@ router.post(
   }
 );
 
+//A generic function
+//type identifies wheter it is Category or Location which you want to determine
+//this loop will find categories/locations in the path and the last one in array will be returned
+async function retrieveFromPath(path, type = "Category", companyId) {
+  const models = {
+    Category,
+    Location
+  };
+  const categoriesInPath = path.split(">");
+  let entity = null;
+  let parent = null;
+  let childs = [];
+
+  let entityName = categoriesInPath[0].trim();
+  entity = await models[type].findOne({
+    [`parent${type}`]: null,
+    name: entityName,
+    companyId: companyId
+  });
+  if (!entity) return { entity: null, entityName: entityName };
+  childs = await models[type].find({ [`parent${type}`]: entity._id });
+  parent = entity;
+  for (let i = 1; i < categoriesInPath.length; i++) {
+    entityName = categoriesInPath[i].trim();
+    entity = childs.find(c => c.name === entityName);
+    if (!entity) return { entity: null, entityName: entityName };
+    childs = await models[type].find({ [`parent${type}`]: entity._id });
+    parent = entity;
+  }
+  return { entity, entityName };
+}
+
 //Route which handles CSV files
 router.post(
   "/uploadCsv",
@@ -202,8 +236,8 @@ router.post(
         // and pushed to responsibilities array
         for (let j = 0; j < responsibilitiesArray.length; j++) {
           const responsbility = responsibilitiesArray[j];
-          const categoryPath = responsbility.split(":")[0];
-          const locationPath = responsbility.split(":")[1];
+          const [categoryPath, locationPath] = responsbility.split(":");
+          // const  = responsbility.split(":")[1];
           let {
             entity: category,
             entityName: categoryName
@@ -218,7 +252,7 @@ router.post(
             user.message = `The category named '${categoryName}' is not found, So the whole path is invalid and given responsbility is skipped.`;
             console.log(user.message);
             errors.push(user);
-            break;
+            continue;
           }
 
           let {
@@ -234,7 +268,7 @@ router.post(
             user.message = `The location named '${locationName}' is not found, So the whole path is invalid and given responsbility is skipped.`;
             console.log(user.message);
             errors.push(user);
-            break;
+            continue;
           }
           let obj = {
             category: category,
@@ -283,8 +317,10 @@ router.post(
     }
 
     Assignee.collection.insertMany(validatedUsers, (err, result) => {
-      if (err) return res.send(err);
-      else {
+      if (err) {
+        if (req.file) deleteFile(req.file.path);
+        return res.send(err);
+      } else {
         sendCsvToClient(req, res, errors);
 
         // res.status(200).send("Successful");

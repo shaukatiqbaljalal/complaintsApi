@@ -1,36 +1,18 @@
+const encrypt = require("./../common/encrypt");
 const { Company, validate } = require("../models/company");
+const authUser = require("./../middleware/authUser");
+const deleteFile = require("./../common/deleteFile");
+const isSuperAdmin = require("./../middleware/isSuperAdmin");
 const express = require("express");
 const router = express.Router();
-const _ = require("lodash");
-const multer = require("multer");
-const fs = require("fs");
-// multer storage
-const multerStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let dest = "./profilePictures";
-    cb(null, dest);
-  },
-  filename: (req, file, cb) => {
-    const ext = file.mimetype.split("/")[1];
-    cb(null, `cmp-${Date.now()}-${file.originalname}`);
-  }
-});
+const io = require("../socket");
+const uploadImage = require("./../middleware/uploadImage");
+const upload = require("./../middleware/multer");
+const { Admin } = require("../models/admin");
+const passwordGenrator = require("./../middleware/passwordGenerator");
 
-// multer filter
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype === "image/jpeg" || file.mimetype === "image/png") {
-    cb(null, true);
-  } else {
-    cb("Only images are allowed", false);
-  }
-};
-
-// multer upload
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter
-});
-
+const sendEmail = require("../common/sendEmail");
+const { getEmailOptions } = require("../common/sendEmail");
 router.get("/", async (req, res) => {
   let companies = await Company.find();
   if (!companies.length) return res.status(404).send("Companies Not Found");
@@ -43,53 +25,96 @@ router.get("/:id", async (req, res) => {
   return res.send(company);
 });
 
-router.post("/", upload.single("profilePicture"), async (req, res) => {
-  const { error } = validate(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
-  if (req.file) {
-    req.body.profilePath = req.file.filename;
-    req.body.profilePicture = fs.readFileSync(req.file.path);
-  }
+router.post(
+  "/",
+  authUser,
+  isSuperAdmin,
+  upload.single("profilePicture"),
+  uploadImage,
+  passwordGenrator,
+  async (req, res) => {
+    console.log(req.body, "before");
+    const { adminEmail, password: adminPassword, profilePath } = req.body;
+    if (req.body.adminEmail) {
+      delete req.body.adminEmail;
+      delete req.body.password;
+    }
+    if (profilePath == "null") {
+      delete req.body.profilePath;
+    }
+    console.log(req.body, "after");
 
-  // let regex = new RegExp(req.body.name, "i");
-  let company = await Company.findOne({
-    name: { $regex: `^${req.body.name}$`, $options: "i" }
-  });
+    const { error } = validate(req.body);
+    if (error) return res.status(400).send(error.details[0].message);
 
-  if (company)
-    return res.status(400).send("Company with given name already exists");
-  company = new Company(req.body);
-  try {
+    //regex is used because want to search the name in case insensitive
+    let company = await Company.findOne({
+      name: { $regex: `^${req.body.name}$`, $options: "i" }
+    });
+
+    if (company)
+      return res.status(400).send("Company with given name already exists");
+
+    company = new Company(req.body);
+
     await company.save();
+
+    let admin = new Admin({
+      companyId: company._id,
+      email: adminEmail,
+      name: "Admin",
+      phone: company.phone,
+      password: encrypt(adminPassword)
+    });
+
+    await admin.save();
+
+    const options = getEmailOptions(
+      admin.email,
+      req.get("origin"),
+      adminPassword,
+      "Registration of Account Confirmation",
+      "admin"
+    );
     res.send(company);
-  } catch (error) {
-    res.status(500).send("COuld not stode company details", error);
+    sendEmail(options);
   }
-});
+);
 
-router.put("/:id", upload.single("profilePicture"), async (req, res) => {
-  // const { error } = validate(req.body);
-  // if (error) return res.status(400).send(error.details[0].message);
-  let company = await Company.findById(req.params.id);
-  if (!company)
-    return res.status(404).send("The company with the given ID was not found.");
-  console.log("req body", req.body);
-  const profilePath = req.file ? req.file.path : req.body.profilePath;
+router.put(
+  "/:id",
+  authUser,
+  upload.single("profilePicture"),
+  uploadImage,
+  async (req, res) => {
+    //Check if it is admin of requested company or it is superAdmin
+    if (
+      (req.user.companyId &&
+        req.user.companyId !== req.params.id &&
+        req.user.role !== "admin") ||
+      req.user.role !== "superAdmin"
+    )
+      return res.status(401).send("You are not authorized");
 
-  req.body.profilePath = profilePath;
-  req.body.profilePicture = company.profilePicture;
-  if (req.file) {
-    req.body.profilePicture = fs.readFileSync(req.file.path);
-  }
-  try {
+    let company = await Company.findById(req.params.id);
+    if (!company)
+      return res
+        .status(404)
+        .send("The company with the given ID was not found.");
+
+    console.log("req body", req.body);
+
     company = await Company.findByIdAndUpdate(req.params.id, req.body, {
       new: true
     });
-    res.send(company);
-    if (req.file) deleteFile(req.file.path);
-  } catch (error) {
-    res.status(500).send("Some error occured", error);
+
+    io.getIO().emit("company", {
+      action: "company updated",
+      company: company
+    });
+
+    res.json(company);
     if (req.file) deleteFile(req.file.path);
   }
-});
+);
 module.exports = router;
