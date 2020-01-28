@@ -25,6 +25,7 @@ const authSuperAdmin = require("../routes/authSuperAdmin");
 const passwordHelper = require("../routes/passwordHelper");
 const samplecsv = require("../routes/samplecsv");
 const superAdmins = require("../routes/superAdmins");
+const { cloudinaryConfig } = require("./../config/cloudinaryConfig");
 
 const notifications = require("../routes/notifications");
 
@@ -34,6 +35,7 @@ module.exports = function(app) {
   app.use(cors());
   app.use("/public", express.static(path.join(__dirname, "..", "public")));
 
+  app.use("*", cloudinaryConfig);
   //for sample csvs
   app.use("/api/samplecsv", samplecsv);
 

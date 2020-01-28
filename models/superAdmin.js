@@ -31,8 +31,7 @@ const superAdminSchema = new mongoose.Schema(
       required: false,
       minlength: 5,
       maxlength: 1024
-    },
-    profilePicture: { type: Buffer }
+    }
   },
   {
     timestamps: true
@@ -72,8 +71,7 @@ function validateSuperAdmin(SuperAdmin) {
       .required(),
     profilePath: Joi.string()
       .min(5)
-      .max(255),
-    profilePicture: Joi.binary()
+      .max(255)
   };
 
   return Joi.validate(SuperAdmin, schema);

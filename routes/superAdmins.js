@@ -21,31 +21,16 @@ const {
   executePagination,
   prepareFilter
 } = require("../middleware/pagination");
-// multer storage
-const multerStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let dest =
-      file.mimetype === "application/vnd.ms-excel"
-        ? "./csvFiles"
-        : "./profilePictures";
-    cb(null, dest);
-  },
-  filename: (req, file, cb) => {
-    const ext = file.mimetype.split("/")[1];
-    cb(null, `cmp-${Date.now()}-${file.originalname}`);
-  }
-});
 
-// multer filter
+const uploadImage = require("./../middleware/uploadImage");
+
+const multerStorage = multer.memoryStorage();
+
 const multerFilter = (req, file, cb) => {
-  if (
-    file.mimetype === "image/jpeg" ||
-    file.mimetype === "image/png" ||
-    file.mimetype === "application/vnd.ms-excel"
-  ) {
+  if (file.mimetype === "image/jpeg" || file.mimetype === "image/png") {
     cb(null, true);
   } else {
-    cb("Only images or csv files allowed", false);
+    cb("Only images are allowed", false);
   }
 };
 
@@ -56,14 +41,9 @@ const upload = multer({
 });
 
 router.get("/:id", async (req, res) => {
-  try {
-    let superAdmin = await SuperAdmin.findOne({ _id: req.params.id });
-    if (!superAdmin)
-      return res.status(404).send("User with given id not found.");
-    res.send(superAdmin);
-  } catch (error) {
-    res.send(error);
-  }
+  let superAdmin = await SuperAdmin.findOne({ _id: req.params.id });
+  if (!superAdmin) return res.status(404).send("User with given id not found.");
+  res.send(superAdmin);
 });
 
 router.get(
@@ -147,33 +127,15 @@ router.put(
   upload.single("profilePicture"),
   authUser,
   isSuperAdmin,
+  uploadImage,
   async (req, res) => {
-    // const { error } = validate(req.body);
-    // if (error) return res.status(400).send(error.details[0].message);
     let superAdmin = await SuperAdmin.findById(req.params.id);
     if (!superAdmin)
       return res
         .status(404)
         .send("The superAdmin with the given ID was not found.");
+
     console.log("req body", req.body);
-
-    const profilePath = req.file ? req.file.path : req.body.profilePath;
-    let profilePicture = superAdmin.profilePicture;
-    if (req.file) {
-      profilePicture = fs.readFileSync(req.file.path);
-    }
-    req.body.profilePath = profilePath;
-    req.body.profilePicture = profilePicture;
-
-    if (req.body.mobileFile) {
-      let buff = Buffer.from(req.body.mobileFile, "base64");
-
-      let filename = `cmp-${req.user._id}-${Date.now()}.png`;
-      let filePath = path.join("profilePictures", filename);
-
-      req.body.profilePath = filePath;
-      req.body.profilePicture = buff;
-    }
 
     superAdmin = await SuperAdmin.findByIdAndUpdate(req.params.id, req.body, {
       new: true

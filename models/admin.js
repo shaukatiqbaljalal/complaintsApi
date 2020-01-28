@@ -43,7 +43,6 @@ const adminSchema = new mongoose.Schema(
       minlength: 5,
       maxlength: 1024
     },
-    profilePicture: { type: Buffer },
     responsibility: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: "Category"
@@ -61,6 +60,7 @@ adminSchema.methods.generateAuthToken = function() {
       _id: this._id,
       name: this.name,
       role: "admin",
+      profilePath: this.profilePath,
       companyId: this.companyId
     },
     config.get("jwtPrivateKey")
@@ -93,8 +93,7 @@ function validateAdmin(Admin) {
     profilePath: Joi.string()
       .min(5)
       .max(255),
-    responsibility: Joi.array().items(Joi.ObjectId()),
-    profilePicture: Joi.binary()
+    responsibility: Joi.array().items(Joi.ObjectId())
   };
 
   return Joi.validate(Admin, schema);
