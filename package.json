@@ -43,7 +43,7 @@
     "path": "^0.12.7",
     "pdfkit": "^0.10.0",
     "sentiment": "^5.0.1",
-    "socket.io": "^2.2.0",
+    "socket.io": "^2.4.0",
     "winston": "^2.4.4",
     "winston-mongodb": "^3.0.2"
   }
